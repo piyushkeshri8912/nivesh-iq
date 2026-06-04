@@ -1,7 +1,14 @@
+from sched import scheduler
+import logging
+
 from fastapi import APIRouter
-from app.api.v1 import health, profile, transactions, portfolio, analytics, watchlist, news, insights, ask, auth
+from app.api.v1 import health, profile, transactions, portfolio, analytics, watchlist, news, insights, ask, scheduler
+
+logger = logging.getLogger(__name__)
 
 api_router = APIRouter()
+logger.info("Mounting API v1 endpoints...")
+
 api_router.include_router(health.router, prefix="/health", tags=["health"])
 api_router.include_router(profile.router, prefix="/profile", tags=["profile"])
 api_router.include_router(transactions.router, prefix="/transactions", tags=["transactions"])
@@ -11,7 +18,6 @@ api_router.include_router(watchlist.router, prefix="/watchlist", tags=["watchlis
 api_router.include_router(news.router, prefix="/news", tags=["news"])
 api_router.include_router(insights.router, prefix="/insights", tags=["insights"])
 api_router.include_router(ask.router, prefix="/ask", tags=["ask"])
-api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
+api_router.include_router(scheduler.router, prefix="/schedular", tags=["Schedular"])
 
-
-
+    

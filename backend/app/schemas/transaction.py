@@ -43,7 +43,7 @@ class TransactionUpdate(BaseModel):
 
 class TransactionResponse(TransactionBase):
     id: int
-    user_id: int
+    user_id: str
     executed_at: datetime
 
     class Config:

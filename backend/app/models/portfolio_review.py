@@ -6,7 +6,7 @@ class PortfolioReview(Base):
     __tablename__ = "portfolio_reviews"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
     created_at = Column(DateTime(timezone=True), default=func.now(), nullable=False)
     
     risk_summary = Column(Text, nullable=False)
@@ -19,3 +19,9 @@ class PortfolioReview(Base):
     
     evidence = Column(JSON, nullable=True)
     disclaimers = Column(Text, nullable=True)
+
+    # Token usage tracking
+    prompt_tokens = Column(Integer, default=0, nullable=False)
+    completion_tokens = Column(Integer, default=0, nullable=False)
+    total_tokens = Column(Integer, default=0, nullable=False)
+

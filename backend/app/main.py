@@ -1,53 +1,57 @@
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from app.core.config import settings
 from app.api.router import api_router
 from app.db.base import Base
 from app.db.session import engine, SessionLocal
 from app.models.user import User
 
+# Configure global logging format for all backend modules
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+
+def _ensure_vector_extension() -> None:
+    with engine.begin() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+
+
+def _ensure_user_memory_vector_schema() -> None:
+    check_sql = text(
+        """
+        SELECT udt_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'user_memories'
+          AND column_name = 'embedding';
+        """
+    )
+    with engine.begin() as conn:
+        result = conn.execute(check_sql).mappings().first()
+        if not result:
+            return
+        if result["udt_name"] in {"json", "jsonb"}:
+            conn.execute(text(
+                """
+                ALTER TABLE public.user_memories
+                ALTER COLUMN embedding TYPE vector(768)
+                USING embedding::text::vector(768);
+                """
+            ))
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup DB schema creation (for dev/demo environments)
+    # Enable pgvector extension before creating tables
+    _ensure_vector_extension()
+    # Startup DB schema creation
     Base.metadata.create_all(bind=engine)
-    
-    # Auto-seed default user with ID = 1
-    db = SessionLocal()
-    try:
-        from app.core.security import get_password_hash
-        user = db.query(User).filter(User.id == 1).first()
-        if not user:
-            user = User(
-                id=1,
-                email="demo@niveshiq.com",
-                hashed_password=get_password_hash("DemoPassword123"),
-                is_active=True,
-                is_verified=True
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-            print("Default demo user seeded successfully.")
-        elif not user.hashed_password or not user.is_verified:
-            user.hashed_password = get_password_hash("DemoPassword123")
-            user.is_verified = True
-            user.is_active = True
-            db.commit()
-            print("Default demo user credentials updated.")
-            
-        # Synchronize holdings and snapshots for the demo user on startup if transactions exist
-        from app.models.transaction import Transaction
-        first_tx = db.query(Transaction).filter(Transaction.user_id == 1).order_by(Transaction.executed_at.asc()).first()
-        if first_tx:
-            from app.services.snapshot_service import snapshot_service
-            snapshot_service.rebuild_snapshots(db, 1, first_tx.executed_at)
-            print("Successfully synchronized holdings and snapshots for demo user in PostgreSQL.")
-    except Exception as e:
-        print(f"Error seeding or syncing default demo user: {e}")
-    finally:
-        db.close()
-        
+    # Fix legacy json/jsonb embedding column if needed
+    _ensure_user_memory_vector_schema()
     yield
 
 app = FastAPI(
@@ -56,10 +60,15 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS to allow Next.js dev server (usually localhost:3000) and other dev tools
+# Configure CORS to allow Next.js dev server, production deploys, and Cloud Run origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://niveshiq-frontend-378042793272.us-central1.run.app"
+    ],
+    allow_origin_regex=r"https?://.*\.run\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

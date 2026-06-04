@@ -1,15 +1,20 @@
 import feedparser
-import threading
 import urllib.parse
 from datetime import datetime, timedelta
+import logging
 import re
 import html
 from typing import List, Dict, Any
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from app.core.cache import cache_manager
+
+logger = logging.getLogger(__name__)
 
 class NewsService:
     def __init__(self):
-        self._news_cache = {}  # symbol -> {"items": List[dict], "timestamp": datetime}
-        self._lock = threading.Lock()
+        # Using centralized Redis cache_manager instead of local memory dicts
+        pass
 
     def clean_company_name(self, name: str, symbol: str) -> str:
         """
@@ -56,6 +61,22 @@ class NewsService:
         except Exception:
             pass
         return datetime.utcnow()
+        
+    def _is_duplicate(self, title: str, seen_titles: set) -> bool:
+        """Helper to check if a title overlaps significantly with already seen titles."""
+        norm_title = re.sub(r"\W+", " ", title.lower()).strip()
+        words = set(norm_title.split())
+        
+        for seen in seen_titles:
+            seen_words = set(seen.split())
+            if not words or not seen_words:
+                continue
+            overlap = len(words.intersection(seen_words)) / max(len(words), len(seen_words))
+            if overlap > 0.7:  # 70% threshold overlap
+                return True
+                
+        seen_titles.add(norm_title)
+        return False
 
     def fetch_news_for_symbol(self, symbol: str, company_name: str) -> List[Dict[str, Any]]:
         """
@@ -63,13 +84,11 @@ class NewsService:
         Implements title suffix trimming, deduplication, and thread-safe caching (1-hour TTL).
         """
         symbol = symbol.upper().strip()
-        now = datetime.utcnow()
 
-        # Check Cache first (1-hour cache)
-        with self._lock:
-            cached = self._news_cache.get(symbol)
-            if cached and (now - cached["timestamp"]) < timedelta(hours=1):
-                return cached["items"]
+        cache_key = f"news_service:symbol:{symbol}"
+        cached = cache_manager.get(cache_key)
+        if cached is not None:
+            return cached
 
         cleaned_name = self.clean_company_name(company_name, symbol)
         
@@ -105,25 +124,8 @@ class NewsService:
                     parts = title.rsplit(" | ", 1)
                     cleaned_title = parts[0]
 
-                # 2. Textual deduplication using keyword overlap & normalize strings
-                norm_title = re.sub(r"\W+", " ", cleaned_title.lower()).strip()
-                words = set(norm_title.split())
-                
-                # Check overlaps with already seen headlines
-                is_duplicate = False
-                for seen in seen_titles:
-                    seen_words = set(seen.split())
-                    if not words or not seen_words:
-                        continue
-                    overlap = len(words.intersection(seen_words)) / max(len(words), len(seen_words))
-                    if overlap > 0.7:  # 70% threshold overlap
-                        is_duplicate = True
-                        break
-
-                if is_duplicate:
+                if self._is_duplicate(cleaned_title, seen_titles):
                     continue
-
-                seen_titles.add(norm_title)
 
                 # Resolve publisher name
                 source = "Unknown Source"
@@ -148,26 +150,102 @@ class NewsService:
                     break
 
         except Exception as e:
-            print(f"Error fetching RSS news for {symbol}: {e}")
+            logger.error(f"Error fetching RSS news for {symbol}: {e}", exc_info=True)
 
-        # Cache results
-        with self._lock:
-            self._news_cache[symbol] = {
-                "items": items,
-                "timestamp": now
-            }
-            return items
+        # Cache results for 1 hour (3600 seconds)
+        cache_manager.set(cache_key, items, ttl=3600)
+        return items
 
     def fetch_news_bulk(self, symbols_map: Dict[str, str]) -> Dict[str, List[Dict[str, Any]]]:
         """
         Fetch news for a map of symbol -> company_name.
-        Returns a dict mapping symbol -> list of news items.
+        Executes network-bound RSS fetches concurrently using a thread pool.
         """
         results = {}
-        # Fetch sequentially (cached reads are instant, others make small RSS HTTP downloads)
-        for sym, name in symbols_map.items():
-            results[sym] = self.fetch_news_for_symbol(sym, name)
+        
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_symbol = {
+                executor.submit(self.fetch_news_for_symbol, sym, name): sym
+                for sym, name in symbols_map.items()
+            }
+            
+            for future in as_completed(future_to_symbol):
+                sym = future_to_symbol[future]
+                try:
+                    results[sym] = future.result()
+                except Exception as e:
+                    logger.error(f"Error fetching bulk news for {sym}: {e}", exc_info=True)
+                    results[sym] = []
+                    
         return results
+
+    def search_news(self, query: str, max_results: int = 10) -> List[Dict[str, Any]]:
+        """
+        Perform a query-aware financial and business news search on Google News RSS.
+        """
+        query = query.strip()
+        if not query:
+            return []
+            
+        cache_key = f"news_service:search:{query}"
+        cached = cache_manager.get(cache_key)
+        if cached is not None:
+            return cached
+
+        is_indian = any(k in query.lower() for k in ["india", "nifty", "nse", "bse", "rbi", "rupee", "₹", "inr"])
+        if is_indian:
+            url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=en-IN&gl=IN&ceid=IN:en"
+        else:
+            url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=en-US&gl=US&ceid=US:en"
+
+        items = []
+        try:
+            feed = feedparser.parse(url)
+            entries = feed.entries or []
+
+            seen_titles = set()
+            for entry in entries:
+                title = entry.get("title", "")
+                if not title:
+                    continue
+
+                cleaned_title = title
+                if " - " in title:
+                    parts = title.rsplit(" - ", 1)
+                    cleaned_title = parts[0]
+                elif " | " in title:
+                    parts = title.rsplit(" | ", 1)
+                    cleaned_title = parts[0]
+
+                if self._is_duplicate(cleaned_title, seen_titles):
+                    continue
+
+                source = "Unknown Source"
+                if "source" in entry and entry.source:
+                    source = entry.source.get("title", "Unknown Source")
+                elif " - " in title:
+                    source = title.rsplit(" - ", 1)[-1]
+                elif " | " in title:
+                    source = title.rsplit(" | ", 1)[-1]
+
+                pub_datetime = self._parse_pubdate(entry)
+
+                items.append({
+                    "title": cleaned_title,
+                    "link": entry.get("link", ""),
+                    "source": source,
+                    "published_at": pub_datetime.isoformat() + "Z"
+                })
+
+                if len(items) >= max_results:
+                    break
+
+        except Exception as e:
+            logger.error(f"Error searching RSS news for '{query}': {e}", exc_info=True)
+
+        # Cache search results for 10 minutes
+        cache_manager.set(cache_key, items, ttl=600)
+        return items
 
     def get_why_matters_label(
         self, 
@@ -175,15 +253,15 @@ class NewsService:
         sector: str, 
         cap_bucket: str, 
         holding_qty: float, 
-        watch_reason: str = None
+        return_since_added: float = None
     ) -> str:
         """
         Generates context-aware explanations of why a news asset matters to the user's portfolio.
         """
         if holding_qty > 0:
             return f"Active holding ({cap_bucket.capitalize()} Cap) in the {sector} sector. Keep track of earnings, growth trends, and contract cycles."
-        elif watch_reason:
-            return f"Watched candidate under review in the {sector} sector. Tracking reason: '{watch_reason}'."
+        elif return_since_added is not None:
+            return f"Watched candidate in the {sector} sector with returns since added of {return_since_added}%."
         else:
             return f"Watched candidate in the {sector} sector. Monitored for potential diversification benefits."
 

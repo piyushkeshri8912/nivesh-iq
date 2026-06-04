@@ -6,10 +6,10 @@ class UserBase(BaseModel):
     email: str = Field(..., description="User Email")
 
 class UserCreate(UserBase):
-    password: Optional[str] = None
+    pass
 
 class UserResponse(UserBase):
-    id: int
+    id: str
     is_active: bool
     profile: Optional[UserProfileResponse] = None
 

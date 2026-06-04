@@ -1,11 +1,13 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 class AskRequest(BaseModel):
     query: str
+    temporary: bool = False
+    session_id: Optional[str] = None
 
 class AskResponse(BaseModel):
     answer: str
-    evidence: List[str]
     caveat: str
-    next_steps: List[str]
+    evidence: Optional[List[str]] = []
+    next_steps: Optional[List[str]] = []

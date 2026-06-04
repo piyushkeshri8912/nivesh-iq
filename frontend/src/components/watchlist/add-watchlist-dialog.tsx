@@ -15,14 +15,12 @@ export default function AddWatchlistDialog({
   onSuccess,
 }: AddWatchlistDialogProps) {
   const [symbol, setSymbol] = useState("");
-  const [watchReason, setWatchReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setSymbol("");
-      setWatchReason("");
       setError(null);
     }
   }, [isOpen]);
@@ -45,7 +43,6 @@ export default function AddWatchlistDialog({
     try {
       await addWatchlistItem({
         symbol: cleanSymbol,
-        watch_reason: watchReason.trim() || undefined,
       });
       onSuccess();
       onClose();
@@ -107,19 +104,6 @@ export default function AddWatchlistDialog({
               </p>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                Watch Reason (Optional)
-              </label>
-              <textarea
-                placeholder="Why are you tracking this stock? e.g. undervalued entry, diversification target, wait for next earnings..."
-                value={watchReason}
-                onChange={(e) => setWatchReason(e.target.value)}
-                rows={3}
-                className="w-full px-3.5 py-2.5 border border-zinc-200 dark:border-zinc-850 rounded-xl bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-indigo-500 text-sm font-medium resize-none"
-              />
-            </div>
-
             <div className="flex gap-3 justify-end pt-4 border-t border-zinc-150 dark:border-zinc-800 mt-6">
               <button
                 type="button"
@@ -142,3 +126,4 @@ export default function AddWatchlistDialog({
     </div>
   );
 }
+

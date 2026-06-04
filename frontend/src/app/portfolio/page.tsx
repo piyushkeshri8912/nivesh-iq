@@ -418,7 +418,7 @@ export default function PortfolioPage() {
                           <td className="px-6 py-4.5 text-right font-mono text-zinc-600 dark:text-zinc-400">
                             ₹{h.average_buy_price.toFixed(2)}
                           </td>
-                          <td className="px-6 py-4.5 text-right font-mono text-zinc-800 dark:text-zinc-250">
+                          <td className="px-6 py-4.5 text-right font-mono text-zinc-600 dark:text-zinc-400">
                             ₹{h.market_price.toFixed(2)}
                           </td>
                           <td className="px-6 py-4.5 text-right font-bold font-mono text-zinc-900 dark:text-zinc-50">
@@ -643,13 +643,13 @@ export default function PortfolioPage() {
                 </div>
               </div>
             </div>
+              )}
+            </div>
           )}
-        </div>
-      )}
 
-      {mainTab === "ai-review" && (
+          {mainTab === "ai-review" && (
         <div className="space-y-8 text-left">
-          {/* SEBI Disclaimer Header (Yellow warning alert box) */}
+          {/* SEBI Disclaimer Header */}
           <div className="p-4 bg-amber-50/50 border border-amber-200 dark:bg-amber-950/10 dark:border-amber-900/30 rounded-2xl text-xs font-black text-amber-700 dark:text-amber-400 flex items-center gap-2">
             <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
             Educational analysis only: Not SEBI-registered financial advice. All investments carry risk.
@@ -664,7 +664,7 @@ export default function PortfolioPage() {
               </div>
               <div className="space-y-1">
                 <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">AI Review Not Available</h3>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                <p className="text-sm text-zinc-555 dark:text-zinc-400 leading-relaxed">
                   Log active holdings inside the Ledger tab to compile and execute a strategic LangGraph AI Review of your asset portfolio.
                 </p>
               </div>
@@ -712,162 +712,178 @@ export default function PortfolioPage() {
               {/* Skeletons/Errors State */}
               {generatingReview ? (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="h-44 rounded-[2rem] bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
-                    <div className="h-44 rounded-[2rem] bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
-                  </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="h-56 rounded-[2rem] bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
-                    <div className="h-56 rounded-[2rem] bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
-                  </div>
+                  <div className="h-44 rounded-[2rem] bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
+                  <div className="h-44 rounded-[2rem] bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
+                  <div className="h-44 rounded-[2rem] bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
                 </div>
               ) : reviewError ? (
-                <div className="p-6 border border-rose-250 bg-rose-50/20 dark:border-rose-900/30 dark:bg-rose-955/10 rounded-[2rem] text-center text-xs font-semibold text-rose-600 dark:text-rose-450">
+                <div className="p-6 border border-rose-250 bg-rose-50/20 dark:border-rose-900/30 dark:bg-rose-955/10 rounded-[2rem] text-center text-xs font-semibold text-rose-600 dark:text-rose-455">
                   {reviewError}
                 </div>
               ) : review ? (
-                <div className="space-y-6">
-                  {/* Risks & Diversification Cards */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Left: Risk Analysis */}
-                    <div className="p-6 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm space-y-3">
-                      <h4 className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-                        AI Risk & Concentration Evaluation
-                      </h4>
-                      <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 font-semibold leading-relaxed">
-                        {renderTextWithCitations(review.risk_summary, review.evidence?.references)}
-                      </p>
-                    </div>
-
-                    {/* Right: Diversification */}
-                    <div className="p-6 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm space-y-3">
-                      <h4 className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-                        AI Diversification & Sector Spreads
-                      </h4>
-                      <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 font-semibold leading-relaxed">
-                        {renderTextWithCitations(review.diversification_summary, review.evidence?.references)}
-                      </p>
+                <div className="space-y-6 animate-fade-in">
+                  {/* 1. Portfolio Summary Section */}
+                  <div className="p-6 sm:p-8 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm space-y-4">
+                    <h3 className="text-base sm:text-lg font-black text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 bg-indigo-500 rounded-full shrink-0 animate-pulse"></span>
+                      Portfolio Summary
+                    </h3>
+                    <p className="text-xs text-zinc-400 font-medium">
+                      A comprehensive strategic analysis of your portfolio holdings, concentration risks, and sector diversification spread.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                      <div className="space-y-2.5 bg-zinc-50/50 dark:bg-zinc-950/20 border border-zinc-150/40 dark:border-zinc-850/50 rounded-2xl p-4.5">
+                        <h4 className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                          <svg className="w-3.5 h-3.5 text-zinc-450" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          Risk & Concentration Evaluation
+                        </h4>
+                        <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 font-semibold leading-relaxed">
+                          {renderTextWithCitations(review.risk_summary, review.evidence?.references)}
+                        </p>
+                      </div>
+                      <div className="space-y-2.5 bg-zinc-50/50 dark:bg-zinc-950/20 border border-zinc-150/40 dark:border-zinc-850/50 rounded-2xl p-4.5">
+                        <h4 className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                          <svg className="w-3.5 h-3.5 text-zinc-450" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                          </svg>
+                          Diversification & Sector Spreads
+                        </h4>
+                        <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 font-semibold leading-relaxed">
+                          {renderTextWithCitations(review.diversification_summary, review.evidence?.references)}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Warnings & Rebalancing Row */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Warnings List */}
-                    <div className="p-6 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm space-y-4">
-                      <h4 className="text-xs font-extrabold text-zinc-900 dark:text-zinc-50 uppercase tracking-wider">
-                        Active Risk Warnings
-                      </h4>
-
-                      {!review.warnings || review.warnings.length === 0 ? (
-                        <div className="p-4 bg-emerald-50/30 border border-emerald-100 dark:bg-emerald-950/10 dark:border-emerald-900/30 rounded-2xl text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
-                          <span className="w-2 h-2 bg-emerald-500 rounded-full shrink-0"></span>
-                          All allocations are currently within target risk tolerances.
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {review.warnings.map((w, idx) => {
-                            const isRed = w.warning_level === "RED";
-                            return (
-                              <div
-                                key={idx}
-                                className={`p-4 border rounded-2xl space-y-1 ${
-                                  isRed
-                                    ? "border-rose-100 bg-rose-50/20 dark:border-rose-950 dark:bg-rose-950/10"
-                                    : "border-amber-100 bg-amber-50/20 dark:border-amber-950 dark:bg-amber-950/10"
-                                }`}
-                              >
-                                <div className="flex justify-between items-center">
-                                  <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                  {/* 2. Recommended Actions Section */}
+                  <div className="p-6 sm:p-8 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm space-y-4">
+                    <h3 className="text-base sm:text-lg font-black text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full shrink-0"></span>
+                      Recommended Actions
+                    </h3>
+                    <p className="text-xs text-zinc-400 font-medium">
+                      Actionable adjustments covering rebalancing ratios, SIP allocations, sector trims, or risk reduction policies.
+                    </p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                      {/* Risk Alerts & Warnings */}
+                      <div className="space-y-3">
+                        <h4 className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                          Risk Alerts & Warnings
+                        </h4>
+                        {!review.warnings || review.warnings.length === 0 ? (
+                          <div className="p-4 bg-emerald-50/30 border border-emerald-100 dark:bg-emerald-950/10 dark:border-emerald-900/30 rounded-2xl text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full shrink-0"></span>
+                            All allocations are currently within target risk tolerances.
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {review.warnings.map((w, idx) => {
+                              const isRed = w.warning_level === "RED";
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`p-4 border rounded-2xl space-y-1 ${
                                     isRed
-                                      ? "bg-rose-50 text-rose-700 border-rose-100/30 dark:bg-rose-950 dark:text-rose-400"
-                                      : "bg-amber-50 text-amber-700 border-amber-100/30 dark:bg-amber-950 dark:text-amber-400"
-                                  }`}>
-                                    {w.symbol || "PORTFOLIO"}
-                                  </span>
-                                  <span className={`text-[9px] font-black uppercase tracking-wider ${
-                                    isRed ? "text-rose-500" : "text-amber-500"
-                                  }`}>
-                                    {isRed ? "Strong warning" : "Medium warning"}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-zinc-600 dark:text-zinc-400 font-semibold leading-relaxed">
-                                  {w.message}
-                                </p>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Sector Rebalancing Guides */}
-                    <div className="p-6 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm space-y-4">
-                      <h4 className="text-xs font-extrabold text-zinc-900 dark:text-zinc-50 uppercase tracking-wider">
-                        Rebalancing Action Plan
-                      </h4>
-
-                      {!review.rebalancing_ideas || review.rebalancing_ideas.length === 0 ? (
-                        <p className="text-xs text-zinc-550 pl-1 leading-relaxed">
-                          Your current sector allocation weights align nicely with target profiles. No rebalancing changes recommended.
-                        </p>
-                      ) : (
-                        <div className="space-y-3">
-                          {review.rebalancing_ideas.map((idea, idx) => {
-                            const isAdd = idea.action === "ADD";
-                            return (
-                              <div
-                                key={idx}
-                                className="p-4 border border-zinc-150 dark:border-zinc-800 bg-zinc-50/20 dark:bg-zinc-950/10 rounded-2xl flex items-start gap-4"
-                              >
-                                <div className="space-y-1.5 flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black border ${
-                                      isAdd
-                                        ? "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-450"
-                                        : "bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-950/30 dark:text-rose-455"
+                                      ? "border-rose-100 bg-rose-50/20 dark:border-rose-955 dark:bg-rose-955/10"
+                                      : "border-amber-100 bg-amber-50/20 dark:border-amber-955 dark:bg-amber-955/10"
+                                  }`}
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                                      isRed
+                                        ? "bg-rose-50 text-rose-700 border-rose-100/30 dark:bg-rose-950 dark:text-rose-455"
+                                        : "bg-amber-50 text-amber-700 border-amber-100/30 dark:bg-amber-950 dark:text-amber-400"
                                     }`}>
-                                      {idea.action} {idea.target_change_percent ? `${Math.abs(idea.target_change_percent)}%` : ""}
+                                      {w.symbol || "PORTFOLIO"}
                                     </span>
-                                    <span className="text-xs font-black text-zinc-850 dark:text-zinc-100">
-                                      {idea.sector} Sector
+                                    <span className={`text-[9px] font-black uppercase tracking-wider ${
+                                      isRed ? "text-rose-500" : "text-amber-500"
+                                    }`}>
+                                      {isRed ? "Strong warning" : "Medium warning"}
                                     </span>
                                   </div>
-                                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-semibold">
-                                    {idea.explanation}
+                                  <p className="text-xs text-zinc-650 dark:text-zinc-400 font-semibold leading-relaxed">
+                                    {w.message}
                                   </p>
                                 </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Rebalancing Guides */}
+                      <div className="space-y-3">
+                        <h4 className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                          Rebalancing Action Plan
+                        </h4>
+                        {!review.rebalancing_ideas || review.rebalancing_ideas.length === 0 ? (
+                          <div className="p-4 bg-zinc-50 dark:bg-zinc-805 border border-zinc-150 dark:border-zinc-850 rounded-2xl text-xs font-semibold text-zinc-500 leading-relaxed">
+                            Your current sector allocation weights align nicely with target profiles. No rebalancing changes recommended.
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {review.rebalancing_ideas.map((idea, idx) => {
+                              const getActionBadge = (act: string) => {
+                                if (act === "SIP") {
+                                  return "bg-teal-50 text-teal-700 border-teal-100 dark:bg-teal-950/30 dark:text-teal-400";
+                                }
+                                if (act === "AVOID_ADDING") {
+                                  return "bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-950/30 dark:text-rose-455";
+                                }
+                                if (act === "TRIM") {
+                                  return "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-955/30 dark:text-amber-400";
+                                }
+                                return "bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-400";
+                              };
+
+                              return (
+                                <div
+                                  key={idx}
+                                  className="p-4 border border-zinc-150 dark:border-zinc-800 bg-zinc-50/20 dark:bg-zinc-950/10 rounded-2xl flex items-start gap-4"
+                                >
+                                  <div className="space-y-1.5 flex-1 text-left">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black border ${getActionBadge(idea.action)}`}>
+                                        {idea.action} {idea.target_change_percent ? `${Math.abs(idea.target_change_percent)}%` : ""}
+                                      </span>
+                                      <span className="text-xs font-black text-zinc-850 dark:text-zinc-100">
+                                        {idea.sector} Sector
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-semibold">
+                                      {idea.explanation}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Market Sentiment Impact & Compatible Ticker Picks */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Market Impact Card */}
-                    <div className="p-6 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm space-y-3">
-                      <h4 className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-                        Market Impact & Sentiment Analysis
-                      </h4>
-                      <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 font-semibold leading-relaxed">
-                        {renderTextWithCitations(review.market_impact, review.evidence?.references)}
-                      </p>
-                    </div>
-
-                    {/* Stock picks suggestions */}
-                    <div className="p-6 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm space-y-4">
-                      <h4 className="text-xs font-extrabold text-zinc-900 dark:text-zinc-50 uppercase tracking-wider">
-                        Potential Diversification Picks
-                      </h4>
-
+                  {/* 3. Stocks Recommended Section */}
+                  <div className="p-6 sm:p-8 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm space-y-4">
+                    <h3 className="text-base sm:text-lg font-black text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 bg-purple-500 rounded-full shrink-0"></span>
+                      Stocks Recommended
+                    </h3>
+                    <p className="text-xs text-zinc-400 font-medium">
+                      Curated stock selections derived from your Watchlist candidates or similar high-suitability assets aligned with your profile.
+                    </p>
+                    <div className="pt-2">
                       {!review.potential_stock_picks || review.potential_stock_picks.length === 0 ? (
-                        <p className="text-xs text-zinc-500 pl-1">
+                        <p className="text-xs text-zinc-550 pl-1 leading-relaxed">
                           No specific stock recommendations found.
                         </p>
                       ) : (
-                        <div className="space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {review.potential_stock_picks.map((pick, idx) => {
                             const getBadgeClass = (comp: string) => {
                               if (comp === "EXCELLENT") return "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-450";
@@ -878,14 +894,14 @@ export default function PortfolioPage() {
                             return (
                               <div
                                 key={idx}
-                                className="p-4 border border-zinc-150 dark:border-zinc-800 bg-zinc-50/20 dark:bg-zinc-950/10 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                                className="p-4 border border-zinc-150 dark:border-zinc-800 bg-zinc-50/20 dark:bg-zinc-950/10 rounded-2xl flex flex-col justify-between gap-3 text-left hover:scale-[1.01] transition-transform duration-200"
                               >
                                 <div className="space-y-1.5 flex-1">
                                   <div className="flex items-center gap-2">
                                     <span className="font-extrabold text-sm text-zinc-900 dark:text-zinc-100">
                                       {pick.symbol}
                                     </span>
-                                    <span className="text-[10px] text-zinc-400 font-medium">
+                                    <span className="text-[10px] text-zinc-400 font-medium truncate max-w-[120px]">
                                       {pick.company_name}
                                     </span>
                                     <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black border ${getBadgeClass(pick.compatibility)}`}>
@@ -903,6 +919,52 @@ export default function PortfolioPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* 4. News Insights Section */}
+                  <div className="p-6 sm:p-8 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm space-y-4">
+                    <h3 className="text-base sm:text-lg font-black text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 bg-blue-500 rounded-full shrink-0"></span>
+                      News Insights
+                    </h3>
+                    <p className="text-xs text-zinc-400 font-medium">
+                      Real-time compiled news signals and macro intelligence related to your holdings and watchlist, with interactive source references.
+                    </p>
+                    <div className="pt-2 pl-1">
+                      {!review.evidence?.news_insights || review.evidence.news_insights.length === 0 ? (
+                        <p className="text-xs text-zinc-555 leading-relaxed">
+                          No news insights compiled in this review. Ensure active holdings or watchlist candidates exist.
+                        </p>
+                      ) : (
+                        <ul className="space-y-3.5 list-disc pl-5">
+                          {review.evidence.news_insights.map((bullet: string, idx: number) => (
+                            <li 
+                              key={idx}
+                              className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 font-semibold leading-relaxed"
+                            >
+                              {renderTextWithCitations(bullet, review.evidence?.references)}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 5. Expected Future Scenario Section */}
+                  <div className="p-6 sm:p-8 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm space-y-4">
+                    <h3 className="text-base sm:text-lg font-black text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: "#f97316" }}></span>
+                      Expected Future Scenario
+                    </h3>
+                    <p className="text-xs text-zinc-400 font-medium">
+                      Projected performance indicators, macro volatility factors, and analyst consensus forecasting long-term trends.
+                    </p>
+                    <div className="pt-2 bg-gradient-to-r from-orange-500/5 to-transparent border border-orange-500/10 dark:border-orange-500/5 rounded-2xl p-4.5">
+                      <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 font-semibold leading-relaxed">
+                        {renderTextWithCitations(review.market_impact, review.evidence?.references)}
+                      </p>
+                    </div>
+                  </div>
+
                 </div>
               ) : (
                 <div className="text-center p-12 bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-[2rem] text-zinc-500 shadow-sm">
@@ -912,7 +974,7 @@ export default function PortfolioPage() {
             </div>
           )}
         </div>
-      )}
+        )}
 
       {/* Modal Dialogue */}
       <AddTransactionDialog

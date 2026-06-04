@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { fetchProfile, saveProfile, changePassword, deleteAccount, logout } from "@/lib/api";
+import { fetchProfile, saveProfile, deleteAccount, logout } from "@/lib/api";
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(null);
@@ -13,35 +13,18 @@ export default function ProfilePage() {
   // Personal Info Form States
   const [name, setName] = useState("");
   const [dob, setDob] = useState("");
-  const [profession, setProfession] = useState("");
+  const [profession, setProfession] = useState("Salaried Employee");
 
   // Investment Profile Form States
   const [riskAppetite, setRiskAppetite] = useState("MODERATE");
   const [timeHorizon, setTimeHorizon] = useState("MEDIUM_TERM");
   const [investmentGoal, setInvestmentGoal] = useState("BALANCED");
   const [monthlyBudget, setMonthlyBudget] = useState(0);
-  const [preferredSectors, setPreferredSectors] = useState("");
-  const [avoidSectors, setAvoidSectors] = useState("");
-
-  // Security Form States
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmNewPassword, setConfirmNewPassword] = useState("");
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [securityLoading, setSecurityLoading] = useState(false);
-  const [securityError, setSecurityError] = useState<string | null>(null);
-  const [securitySuccess, setSecuritySuccess] = useState<string | null>(null);
 
   // Delete Account modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
-
-  useEffect(() => {
-    loadProfileData();
-  }, []);
 
   const loadProfileData = async () => {
     setLoading(true);
@@ -52,13 +35,11 @@ export default function ProfilePage() {
         setProfile(data);
         setName(data.full_name || "");
         setDob(data.dob || "");
-        setProfession(data.profession || "");
+        setProfession(data.profession || "Salaried Employee");
         setRiskAppetite(data.risk_appetite || "MODERATE");
         setTimeHorizon(data.time_horizon || "MEDIUM_TERM");
         setInvestmentGoal(data.investment_goal || "BALANCED");
         setMonthlyBudget(data.monthly_investment_budget || 0);
-        setPreferredSectors(data.preferred_sectors?.join(", ") || "");
-        setAvoidSectors(data.avoid_sectors?.join(", ") || "");
       }
     } catch (err: any) {
       setError(err.message || "Failed to load user profile.");
@@ -67,77 +48,38 @@ export default function ProfilePage() {
     }
   };
 
+  useEffect(() => {
+    const fetchData = async () => {
+      await loadProfileData();
+    };
+    fetchData();
+  }, []);
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setError(null);
     setSuccess(null);
 
-    // Split sector inputs
-    const prefArray = preferredSectors
-      .split(",")
-      .map((s) => s.trim())
-      .filter((s) => s !== "");
-    const avoidArray = avoidSectors
-      .split(",")
-      .map((s) => s.trim())
-      .filter((s) => s !== "");
-
     try {
       const updated = await saveProfile({
         full_name: name.trim() || undefined,
         dob: dob || undefined,
-        profession: profession || undefined,
+        profession: profession,
         risk_appetite: riskAppetite,
         time_horizon: timeHorizon,
         investment_goal: investmentGoal,
         monthly_investment_budget: Number(monthlyBudget),
-        preferred_sectors: prefArray,
-        avoid_sectors: avoidArray,
-        liquidity_preference: profile?.liquidity_preference || "MEDIUM",
-        dividend_vs_growth: profile?.dividend_vs_growth || "BALANCED",
-        notes: profile?.notes || "Updated from profile settings page.",
       });
       setProfile(updated);
       setSuccess("Profile settings successfully updated in the database!");
       
-      // Dispatch event to refresh Topbar onboarding alert
+      // Dispatch custom event to notify other modules
       window.dispatchEvent(new Event("profile-updated"));
     } catch (err: any) {
       setError(err.message || "Failed to update profile settings.");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSecurityLoading(true);
-    setSecurityError(null);
-    setSecuritySuccess(null);
-
-    if (newPassword.length < 8) {
-      setSecurityError("New password must be at least 8 characters long.");
-      setSecurityLoading(false);
-      return;
-    }
-
-    if (newPassword !== confirmNewPassword) {
-      setSecurityError("New passwords do not match.");
-      setSecurityLoading(false);
-      return;
-    }
-
-    try {
-      const msg = await changePassword(currentPassword, newPassword);
-      setSecuritySuccess(msg);
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmNewPassword("");
-    } catch (err: any) {
-      setSecurityError(err.message || "Failed to change password.");
-    } finally {
-      setSecurityLoading(false);
     }
   };
 
@@ -150,8 +92,7 @@ export default function ProfilePage() {
     setDeleteLoading(true);
     try {
       await deleteAccount();
-      logout();
-      window.location.reload(); // Drop them back to unauthenticated login screen
+      await logout();
     } catch (err: any) {
       alert(err.message || "Failed to delete account.");
       setDeleteLoading(false);
@@ -166,6 +107,46 @@ export default function ProfilePage() {
     );
   }
 
+  const token = typeof window !== "undefined" ? localStorage.getItem("niveshiq_token") : null;
+  const isGuest = !!(token && (token.startsWith("guest_") || token.endsWith("@niveshiq.guest")));
+
+  if (isGuest) {
+    return (
+      <div className="max-w-md mx-auto space-y-6 pt-16 font-sans text-center animate-fadeIn select-none">
+        <div className="p-0.5 rounded-3xl bg-gradient-to-br from-indigo-500/20 via-transparent to-teal-500/20 shadow-2xl backdrop-blur-xl">
+          <div className="bg-zinc-950 border border-zinc-900 rounded-[22px] p-8 text-center space-y-6">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-500/10 border border-indigo-500/25 text-indigo-400 text-3xl">
+              👤
+            </div>
+            
+            <div className="space-y-2">
+              <h2 className="text-xl font-black text-zinc-100 tracking-tight animate-fadeIn">
+                Guest Profile
+              </h2>
+              <p className="text-zinc-500 text-xs font-semibold uppercase tracking-wider">
+                Temporary Account Session
+              </p>
+            </div>
+
+            <div className="p-4 bg-indigo-950/20 border border-indigo-900/40 rounded-2xl text-xs font-bold text-indigo-300 leading-relaxed text-left flex gap-3 items-start animate-fadeIn">
+              <span className="text-indigo-400 text-base shrink-0 leading-none">ℹ️</span>
+              <span>
+                It is a guest account, It automatically gets deleted in 1hr along with any data it's store.
+              </span>
+            </div>
+
+            <button
+              onClick={() => logout()}
+              className="w-full py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-zinc-100 font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-zinc-800 hover:border-zinc-700 cursor-pointer"
+            >
+              Sign Out of Guest Session
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 font-sans max-w-5xl mx-auto pb-12 animate-fadeIn">
       
@@ -175,7 +156,7 @@ export default function ProfilePage() {
           User Settings & <span className="bg-gradient-to-r from-indigo-500 to-teal-400 bg-clip-text text-transparent">Profile</span>
         </h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 font-medium">
-          Manage your personal identifiers, investment templates, credentials, and account statuses.
+          Manage your personal details, dynamic risk parameters, and active credentials.
         </p>
       </div>
 
@@ -193,7 +174,7 @@ export default function ProfilePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Left Grid: Forms */}
+        {/* Left Columns: Forms */}
         <div className="lg:col-span-2 space-y-8">
           
           {/* Card 1: Personal Details */}
@@ -202,7 +183,7 @@ export default function ProfilePage() {
               👤 Personal Information
             </h2>
             
-            <form onSubmit={handleSaveProfile} className="space-y-4">
+            <form onSubmit={handleSaveProfile} className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">
@@ -213,7 +194,7 @@ export default function ProfilePage() {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="investor name"
+                    placeholder="Enter your name"
                     className="w-full px-4 py-3 rounded-2xl border border-zinc-200 bg-zinc-50 text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 placeholder-zinc-400 text-sm font-semibold focus:outline-none focus:border-indigo-500/50 transition-colors"
                   />
                 </div>
@@ -249,10 +230,10 @@ export default function ProfilePage() {
                 </select>
               </div>
 
-              {/* Card 2: Onboarding Traits inside the save button flow */}
+              {/* Onboarding Constraints inside the save flow */}
               <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800/80">
                 <h3 className="text-md font-extrabold text-zinc-800 dark:text-zinc-200 mb-4 flex items-center gap-2">
-                  📈 Investment Constraints
+                  📈 Investment Profile
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
@@ -288,7 +269,7 @@ export default function ProfilePage() {
 
                   <div>
                     <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">
-                      Goal
+                      Investment Goal
                     </label>
                     <select
                       value={investmentGoal}
@@ -303,47 +284,17 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">
-                      Monthly surplus budget (₹)
-                    </label>
-                    <input
-                      type="number"
-                      value={monthlyBudget}
-                      onChange={(e) => setMonthlyBudget(Number(e.target.value))}
-                      placeholder="10000"
-                      className="w-full px-4 py-3 rounded-2xl border border-zinc-200 bg-zinc-50 text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 placeholder-zinc-400 text-sm font-semibold focus:outline-none focus:border-indigo-500/50"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">
-                        Preferred Sectors (Comma separated)
-                      </label>
-                      <input
-                        type="text"
-                        value={preferredSectors}
-                        onChange={(e) => setPreferredSectors(e.target.value)}
-                        placeholder="Technology, Healthcare"
-                        className="w-full px-4 py-3 rounded-2xl border border-zinc-200 bg-zinc-50 text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 placeholder-zinc-500 text-sm font-semibold focus:outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">
-                        Avoided Sectors (Comma separated)
-                      </label>
-                      <input
-                        type="text"
-                        value={avoidSectors}
-                        onChange={(e) => setAvoidSectors(e.target.value)}
-                        placeholder="Tobaco, Energy"
-                        className="w-full px-4 py-3 rounded-2xl border border-zinc-200 bg-zinc-50 text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 placeholder-zinc-500 text-sm font-semibold focus:outline-none"
-                      />
-                    </div>
-                  </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">
+                    Monthly surplus budget (₹)
+                  </label>
+                  <input
+                    type="number"
+                    value={monthlyBudget}
+                    onChange={(e) => setMonthlyBudget(Number(e.target.value))}
+                    placeholder="Enter budget (e.g. 10000)"
+                    className="w-full px-4 py-3 rounded-2xl border border-zinc-200 bg-zinc-50 text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 placeholder-zinc-400 text-sm font-semibold focus:outline-none focus:border-indigo-500/50"
+                  />
                 </div>
               </div>
 
@@ -360,123 +311,38 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Right Grid: Security Cards */}
+        {/* Right Columns: Active Action Cards */}
         <div className="space-y-8">
           
-          {/* Card 3: Security - Change Password */}
-          {profile?.hashed_password && (
-            <div className="bg-white border border-zinc-200 rounded-3xl dark:bg-zinc-900 dark:border-zinc-800 p-6 shadow-sm">
-              <h2 className="text-md font-extrabold text-zinc-800 dark:text-zinc-100 mb-6 flex items-center gap-2">
-                🔒 Security Settings
-              </h2>
+          {/* Card 2: Logout Operations */}
+          <div className="bg-white border border-zinc-200 rounded-3xl dark:bg-zinc-900 dark:border-zinc-800 p-6 shadow-sm">
+            <h2 className="text-md font-extrabold text-zinc-800 dark:text-zinc-100 mb-2 flex items-center gap-2">
+              🔒 Log Out
+            </h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6 font-medium leading-relaxed">
+              Disconnect from your session securely and wipe your local state cache.
+            </p>
+            <button
+              onClick={() => logout()}
+              className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+            >
+              Sign Out of Session
+            </button>
+          </div>
 
-              {securityError && (
-                <div className="mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 text-xs font-semibold text-rose-700 dark:text-rose-400">
-                  ⚠️ {securityError}
-                </div>
-              )}
-
-              {securitySuccess && (
-                <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                  ✓ {securitySuccess}
-                </div>
-              )}
-
-              <form onSubmit={handleChangePassword} className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">
-                    Current Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showCurrent ? "text" : "password"}
-                      required
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-4 py-2.5 pr-10 rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 text-sm font-semibold focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrent(!showCurrent)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 cursor-pointer"
-                    >
-                      {showCurrent ? "👁️" : "👁️‍🗨️"}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">
-                    New Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showNew ? "text" : "password"}
-                      required
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-4 py-2.5 pr-10 rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 text-sm font-semibold focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNew(!showNew)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 cursor-pointer"
-                    >
-                      {showNew ? "👁️" : "👁️‍🗨️"}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">
-                    Confirm New Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showConfirm ? "text" : "password"}
-                      required
-                      value={confirmNewPassword}
-                      onChange={(e) => setConfirmNewPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-4 py-2.5 pr-10 rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 text-sm font-semibold focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirm(!showConfirm)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 cursor-pointer"
-                    >
-                      {showConfirm ? "👁️" : "👁️‍🗨️"}
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={securityLoading}
-                  className="w-full py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs uppercase tracking-wide rounded-xl transition-all cursor-pointer"
-                >
-                  {securityLoading ? "Updating..." : "Update Password"}
-                </button>
-              </form>
-            </div>
-          )}
-
-          {/* Card 4: Danger Zone - Delete Account */}
+          {/* Card 3: Danger Zone - Delete Account */}
           <div className="bg-white border border-rose-200 rounded-3xl dark:bg-zinc-900 dark:border-rose-950/40 p-6 shadow-sm">
             <h2 className="text-md font-extrabold text-rose-600 dark:text-rose-400 mb-2 flex items-center gap-2">
               🚨 Danger Zone
             </h2>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6 font-medium">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6 font-medium leading-relaxed">
               Actions in this section are permanent and cannot be reversed.
             </p>
-
             <button
               onClick={() => setShowDeleteModal(true)}
               className="w-full py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-rose-600/10 cursor-pointer flex items-center justify-center gap-2"
             >
-              🗑️ Delete My Account
+              🗑&nbsp;&nbsp;Delete My Account
             </button>
           </div>
 
@@ -493,7 +359,7 @@ export default function ProfilePage() {
                 ⚠️
               </div>
               
-              <h3 className="text-lg font-black text-zinc-100 leading-tight">
+              <h3 className="text-lg font-black text-zinc-100 leading-tight animate-fadeIn">
                 Delete Account Permanently?
               </h3>
               

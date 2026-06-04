@@ -9,17 +9,9 @@ MARKET_CAP_THRESHOLD_INR = {
     "MID": 50000000000.0,     # ₹5,000 Crores
 }
 
-MARKET_CAP_THRESHOLD_USD = {
-    "LARGE": 20000000000.0,   # $20 Billion
-    "MID": 5000000000.0,      # $5 Billion
-}
-
 def get_market_cap_bucket(symbol: str, market_cap: float) -> str:
     symbol = symbol.upper().strip()
-    # Assess if Indian asset to apply INR SEBI guidelines or default to US thresholds
-    is_indian = symbol.endswith(".NS") or symbol.endswith(".BO")
-    thresholds = MARKET_CAP_THRESHOLD_INR if is_indian else MARKET_CAP_THRESHOLD_USD
-    
+    thresholds = MARKET_CAP_THRESHOLD_INR
     if market_cap >= thresholds["LARGE"]:
         return "LARGE"
     elif market_cap >= thresholds["MID"]:
@@ -27,7 +19,7 @@ def get_market_cap_bucket(symbol: str, market_cap: float) -> str:
     else:
         return "SMALL"
 
-def calculate_sector_exposure(db: Session, user_id: int) -> List[Dict]:
+def calculate_sector_exposure(db: Session, user_id: str) -> List[Dict]:
     res = holdings_service.calculate_holdings(db, user_id)
     sector_sums = {}
     total_val = res.summary.total_value
@@ -47,7 +39,7 @@ def calculate_sector_exposure(db: Session, user_id: int) -> List[Dict]:
     exposure.sort(key=lambda x: x["percentage"], reverse=True)
     return exposure
 
-def calculate_market_cap_exposure(db: Session, user_id: int) -> List[Dict]:
+def calculate_market_cap_exposure(db: Session, user_id: str) -> List[Dict]:
     res = holdings_service.calculate_holdings(db, user_id)
     cap_sums = {"LARGE": 0.0, "MID": 0.0, "SMALL": 0.0}
     total_val = res.summary.total_value

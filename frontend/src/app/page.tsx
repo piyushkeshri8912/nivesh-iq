@@ -4,144 +4,82 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="space-y-8 animate-fade-in">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-          Engine Overview
-        </h1>
-        <p className="text-zinc-500 dark:text-zinc-400">
-          NiveshIQ Portfolio Review and Scaffolding Control Center.
-        </p>
-      </div>
+    <div className="min-h-[80vh] flex flex-col items-center justify-center text-center font-sans px-4 relative overflow-hidden animate-fadeIn">
+      
+      {/* Premium Background Grid Glow Effect */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f2937_1px,transparent_1px),linear-gradient(to_bottom,#1f2937_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_60%,transparent_100%)] opacity-30 pointer-events-none" />
+      
+      <div className="max-w-3xl relative z-10 space-y-8">
+        
+        {/* Animated Brand Badge */}
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-bold uppercase tracking-wider animate-pulse">
+          ✨ Welcome to the Future of Investing
+        </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <div className="p-6 rounded-2xl bg-white border border-zinc-200 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 flex flex-col justify-between">
-          <div className="space-y-2">
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
-              Scaffolding Complete
-            </span>
-            <h3 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200 mt-2">
-              Next.js Frontend
-            </h3>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Scaffolded with TS, App Router, and unified dark-themed AppShell.
+        {/* Dynamic Title Header */}
+        <div className="space-y-4">
+          <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-zinc-900 dark:text-zinc-50 leading-none">
+            Welcome to <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-teal-400 bg-clip-text text-transparent">NiveshIQ</span>
+          </h1>
+          <p className="text-lg sm:text-xl font-medium text-zinc-500 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+            Your personal, state-of-the-art AI portfolio intelligence assistant designed to elevate and simplify your investing journey.
+          </p>
+        </div>
+
+        {/* Core Capabilities Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-8">
+          
+          {/* Card 1: Portfolio */}
+          <div className="group p-6 rounded-2xl bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800/80 shadow-sm transition-all duration-300 hover:border-indigo-500/30 hover:shadow-indigo-500/5 hover:-translate-y-1">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-lg font-bold mb-4 group-hover:bg-indigo-500 group-hover:text-white transition-all">
+              📊
+            </div>
+            <h3 className="text-md font-bold text-zinc-800 dark:text-zinc-200">Portfolio Review</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 leading-relaxed">
+              Track weighted average costs, allocations, and live unrealized gains and losses.
             </p>
           </div>
+
+          {/* Card 2: AI Copilot */}
+          <div className="group p-6 rounded-2xl bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800/80 shadow-sm transition-all duration-300 hover:border-purple-500/30 hover:shadow-purple-500/5 hover:-translate-y-1">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-lg font-bold mb-4 group-hover:bg-purple-500 group-hover:text-white transition-all">
+              🤖
+            </div>
+            <h3 className="text-md font-bold text-zinc-800 dark:text-zinc-200">AI Copilot</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 leading-relaxed">
+              Ask stock questions, execute reviews, and receive deep explainable market insights.
+            </p>
+          </div>
+
+          {/* Card 3: Watchlist */}
+          <div className="group p-6 rounded-2xl bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800/80 shadow-sm transition-all duration-300 hover:border-teal-500/30 hover:shadow-teal-500/5 hover:-translate-y-1">
+            <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center text-lg font-bold mb-4 group-hover:bg-teal-500 group-hover:text-white transition-all">
+              👁️
+            </div>
+            <h3 className="text-md font-bold text-zinc-800 dark:text-zinc-200">Watchlist</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 leading-relaxed">
+              Monitor key stock price signals, Change since the day you added and follow tickers dynamically.
+            </p>
+          </div>
+
+        </div>
+
+        {/* Navigation Action CTA */}
+        <div className="pt-8 flex flex-col sm:flex-row justify-center items-center gap-4">
           <Link
             href="/portfolio"
-            className="mt-6 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1.5"
+            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm tracking-wide shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 active:scale-98 transition-all duration-200"
           >
-            Visit Portfolio Dashboard
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
+            Launch Portfolio Dashboard
+          </Link>
+          <Link
+            href="/ask"
+            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl border border-zinc-300 dark:border-zinc-800 bg-white hover:bg-zinc-50 dark:bg-zinc-900/30 dark:hover:bg-zinc-900/60 text-zinc-800 dark:text-zinc-200 font-bold text-sm tracking-wide hover:border-zinc-400 dark:hover:border-zinc-700 transition-all duration-200"
+          >
+            Consult AI Copilot
           </Link>
         </div>
 
-        <div className="p-6 rounded-2xl bg-white border border-zinc-200 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 flex flex-col justify-between">
-          <div className="space-y-2">
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400">
-              Phase 0 Installed
-            </span>
-            <h3 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200 mt-2">
-              FastAPI Python API
-            </h3>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Operational on Port 8000. Features SQLAlchemy DB context and `/health` ping.
-            </p>
-          </div>
-          <a
-            href="/api/health"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-6 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1.5"
-          >
-            Check FastAPI Health API
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-              />
-            </svg>
-          </a>
-        </div>
-
-        <div className="p-6 rounded-2xl bg-white border border-zinc-200 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 flex flex-col justify-between">
-          <div className="space-y-2">
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-300">
-              Local Storage
-            </span>
-            <h3 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200 mt-2">
-              PostgreSQL DB container
-            </h3>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Configured via Docker-compose for persistence of transactions and user profile state.
-            </p>
-          </div>
-          <span className="mt-6 text-xs text-zinc-400 dark:text-zinc-500 inline-block font-mono">
-            PORT: 5432 / DB: niveshiq
-          </span>
-        </div>
-      </div>
-
-      <div className="p-8 rounded-2xl bg-zinc-900 text-zinc-100 border border-zinc-800 shadow-sm">
-        <h3 className="text-xl font-semibold mb-4 bg-gradient-to-r from-zinc-50 to-zinc-400 bg-clip-text text-transparent">
-          Project Implementation Roadmap
-        </h3>
-        <div className="space-y-6">
-          <div className="flex gap-4 items-start">
-            <div className="w-8 h-8 rounded-full bg-emerald-900/30 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0">
-              0
-            </div>
-            <div>
-              <h4 className="font-semibold text-zinc-200">Phase 0: Scaffold & Setup (Current)</h4>
-              <p className="text-sm text-zinc-400">
-                Setup Next.js, FastAPI environment with all dependencies, PostgreSQL database container, and unified layout wrappers.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-4 items-start">
-            <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 flex items-center justify-center font-bold text-sm shrink-0">
-              1
-            </div>
-            <div>
-              <h4 className="font-semibold text-zinc-300">Phase 1: User Onboarding</h4>
-              <p className="text-sm text-zinc-500">
-                Risk appetite profiling, investment styles, avoidance criteria, and preference mapping logic.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-4 items-start">
-            <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 flex items-center justify-center font-bold text-sm shrink-0">
-              2
-            </div>
-            <div>
-              <h4 className="font-semibold text-zinc-300">Phase 2: Holdings & Transactions</h4>
-              <p className="text-sm text-zinc-500">
-                Weighted average cost derivation, transaction CRUD, and yfinance price data pipelines.
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

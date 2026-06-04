@@ -1,261 +1,318 @@
-import yfinance as yf
+import logging
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
-import threading
-import time
+
+import yfinance as yf
+
 from app.db.session import SessionLocal
 from app.models.market_price import MarketPrice
+from app.core.cache import cache_manager
+
+logger = logging.getLogger(__name__)
+
 
 class MarketDataService:
-    def __init__(self):
-        self._price_cache = {}  # symbol -> {"price": float, "timestamp": datetime} (5 min cache)
-        self._sector_cache = {} # symbol -> {"sector": str, "timestamp": datetime} (7 day cache)
-        self._cap_cache = {}    # symbol -> {"cap": float, "timestamp": datetime} (1 day cache)
-        self._name_cache = {}   # symbol -> {"name": str, "timestamp": datetime} (7 day cache)
-        self._lock = threading.Lock()
-        
-        # Start background LTP scheduler thread (IST timezone UTC+5:30)
-        self._scheduler = MarketPriceScheduler(self)
-        self._scheduler.start()
+    FALLBACK_PRICE = 100.0
+    FALLBACK_SECTOR = "Other"
+    FALLBACK_MARKET_CAP = 1_000_000_000.0
+    # Name fallback is always symbol
 
-    def _save_price_to_db(self, symbol: str, price: float):
-        symbol = symbol.upper().strip()
+    def __init__(self):
+        # Relying on centralized Redis cache_manager instead of internal memory caches
+        pass
+
+    @staticmethod
+    def _normalize_symbol(symbol: str) -> str:
+        return symbol.upper().strip()
+
+    @staticmethod
+    def _utcnow() -> datetime:
+        return datetime.now(timezone.utc)
+
+    @contextmanager
+    def _get_db(self):
+        """Context manager to ensure safe DB session allocation and cleanup."""
         db = SessionLocal()
         try:
-            market_price = db.query(MarketPrice).filter(MarketPrice.symbol == symbol).first()
-            if market_price:
-                market_price.price = price
-                market_price.updated_at = datetime.utcnow()
-            else:
-                market_price = MarketPrice(symbol=symbol, price=price, updated_at=datetime.utcnow())
-                db.add(market_price)
+            yield db
             db.commit()
-        except Exception as e:
-            print(f"Error saving price to DB for {symbol}: {e}")
+        except Exception:
             db.rollback()
+            raise
         finally:
             db.close()
 
-    def _fetch_ticker_data(self, symbol: str):
-        symbol = symbol.upper().strip()
-        now = datetime.now()
-        
+    def _save_price_to_db(self, symbol: str, price: float) -> None:
+        symbol = self._normalize_symbol(symbol)
+        now_utc = self._utcnow()
+        try:
+            with self._get_db() as db:
+                market_price = (
+                    db.query(MarketPrice)
+                    .filter(MarketPrice.symbol == symbol)
+                    .first()
+                )
+                if market_price:
+                    market_price.price = price
+                    market_price.updated_at = now_utc
+                else:
+                    db.add(
+                        MarketPrice(
+                            symbol=symbol,
+                            price=price,
+                            updated_at=now_utc,
+                        )
+                    )
+        except Exception as e:
+            logger.exception("Error saving price to DB for %s: %s", symbol, e)
+
+    def _get_fast_info(self, ticker: yf.Ticker) -> dict:
+        """Wrapper to access fast_info safely across yfinance versions."""
+        try:
+            # Some versions recommend get_fast_info(); fall back to property.[web:25][web:18]
+            if hasattr(ticker, "get_fast_info"):
+                return ticker.get_fast_info() or {}
+            return dict(ticker.fast_info or {})
+        except Exception:
+            return {}
+
+    def _fetch_ticker_data(self, symbol: str) -> None:
+        """Fetches unified ticker data safely and updates caches."""
+        symbol = self._normalize_symbol(symbol)
+        now = self._utcnow()
+
+        # Default fallbacks
+        price = self.FALLBACK_PRICE
+        sector = self.FALLBACK_SECTOR
+        market_cap = self.FALLBACK_MARKET_CAP
+        name = symbol
+
         try:
             ticker = yf.Ticker(symbol)
+            fast_info = self._get_fast_info(ticker)
             info = ticker.info or {}
-            
-            # 1. Price
-            price = None
-            try:
-                price = ticker.fast_info.get("lastPrice")
-            except Exception:
-                pass
-            if price is None:
-                price = info.get("regularMarketPrice") or info.get("currentPrice")
-            if price is None:
+
+            # 1. Price resolution logic
+            price_val = fast_info.get("lastPrice") or fast_info.get("last_price")
+            if price_val is None:
+                price_val = (
+                    info.get("regularMarketPrice")
+                    or info.get("currentPrice")
+                )
+
+            if price_val is None:
                 history = ticker.history(period="1d")
                 if not history.empty:
-                    price = history["Close"].iloc[-1]
-            if price is None or price <= 0:
-                price = 100.0
-                
-            # 2. Sector
-            sector = info.get("sector") or "Other"
-            
-            # 3. Market Cap
-            market_cap = info.get("marketCap")
-            if market_cap is None:
-                try:
-                    market_cap = ticker.fast_info.get("marketCap")
-                except Exception:
-                    pass
-            if market_cap is None or market_cap <= 0:
-                market_cap = 1000000000.0  # 1B default fallback
-                
-            # 4. Company Name
+                    price_val = history["Close"].dropna().iloc[-1]
+
+            if price_val and price_val > 0:
+                price = float(price_val)
+
+            # 2. Metadata components
+            sector = info.get("sector") or self.FALLBACK_SECTOR
+
+            cap_val = info.get("marketCap")
+            if cap_val is None:
+                cap_val = fast_info.get("marketCap") or fast_info.get("market_cap")
+            if cap_val and cap_val > 0:
+                market_cap = float(cap_val)
+
             name = info.get("longName") or info.get("shortName") or symbol
 
-            with self._lock:
-                self._price_cache[symbol] = {"price": float(price), "timestamp": now}
-                self._sector_cache[symbol] = {"sector": sector, "timestamp": now}
-                self._cap_cache[symbol] = {"cap": float(market_cap), "timestamp": now}
-                self._name_cache[symbol] = {"name": name, "timestamp": now}
-                
-            # Save to DB
-            self._save_price_to_db(symbol, float(price))
-            
+            # Save to DB immediately if price is valid
+            self._save_price_to_db(symbol, price)
+
         except Exception as e:
-            print(f"Error fetching yfinance metadata for {symbol}: {e}")
-            # Ensure fallback values are cached on failure to prevent repeated blockages
-            with self._lock:
-                if symbol not in self._price_cache:
-                    self._price_cache[symbol] = {"price": 100.0, "timestamp": now}
-                if symbol not in self._sector_cache:
-                    self._sector_cache[symbol] = {"sector": "Other", "timestamp": now}
-                if symbol not in self._cap_cache:
-                    self._cap_cache[symbol] = {"cap": 1000000000.0, "timestamp": now}
-                if symbol not in self._name_cache:
-                    self._name_cache[symbol] = {"name": symbol, "timestamp": now}
+            logger.exception("Error fetching yfinance metadata for %s: %s", symbol, e)
+
+        finally:
+            # Always ensure cache fills
+            cache_manager.set(f"market_data:price:{symbol}", price, ttl=300)
+            cache_manager.set(f"market_data:sector:{symbol}", sector, ttl=31536000)
+            cache_manager.set(f"market_data:cap:{symbol}", market_cap, ttl=2592000)
+            cache_manager.set(f"market_data:name:{symbol}", name, ttl=31536000)
 
     def get_price(self, symbol: str) -> float:
-        symbol = symbol.upper().strip()
-        now = datetime.now()
-        
-        # 1. Check memory cache first (5-minute TTL)
-        with self._lock:
-            cached = self._price_cache.get(symbol)
-            if cached and (now - cached["timestamp"]) < timedelta(minutes=5):
-                return cached["price"]
-                
-        # 2. Check Database next
-        db = SessionLocal()
-        db_price = None
+        symbol = self._normalize_symbol(symbol)
+
+        cached = cache_manager.get(f"market_data:price:{symbol}")
+        if cached is not None:
+            return float(cached)
+
         try:
-            market_price = db.query(MarketPrice).filter(MarketPrice.symbol == symbol).first()
-            if market_price:
-                db_price = market_price.price
-                # Populate memory cache
-                with self._lock:
-                    self._price_cache[symbol] = {"price": db_price, "timestamp": now}
+            with self._get_db() as db:
+                market_price = (
+                    db.query(MarketPrice)
+                    .filter(MarketPrice.symbol == symbol)
+                    .first()
+                )
+                if market_price:
+                    db_price = market_price.price
+                    cache_manager.set(f"market_data:price:{symbol}", db_price, ttl=300)
+                    return db_price
         except Exception as e:
-            print(f"Error reading LTP from DB for {symbol}: {e}")
-        finally:
-            db.close()
-            
-        if db_price is not None:
-            return db_price
-            
-        # 3. Fallback to yfinance lazy-load
+            logger.exception("Error reading LTP from DB for %s: %s", symbol, e)
+
+        # Fallback to single fetch
         self._fetch_ticker_data(symbol)
-        with self._lock:
-            return self._price_cache[symbol]["price"]
-            
+        fetched = cache_manager.get(f"market_data:price:{symbol}")
+        return float(fetched) if fetched is not None else self.FALLBACK_PRICE
+
     def get_sector(self, symbol: str) -> str:
-        symbol = symbol.upper().strip()
-        now = datetime.now()
-        with self._lock:
-            cached = self._sector_cache.get(symbol)
-            if cached and (now - cached["timestamp"]) < timedelta(days=7):
-                return cached["sector"]
+        symbol = self._normalize_symbol(symbol)
+        cached = cache_manager.get(f"market_data:sector:{symbol}")
+        if cached is not None:
+            return str(cached)
         self._fetch_ticker_data(symbol)
-        with self._lock:
-            return self._sector_cache[symbol]["sector"]
+        fetched = cache_manager.get(f"market_data:sector:{symbol}")
+        return str(fetched) if fetched is not None else self.FALLBACK_SECTOR
+
+    def get_sectors_bulk(self, symbols: list[str]) -> dict[str, str]:
+        result = {}
+        for s in symbols:
+            result[s] = self.get_sector(s)
+        return result
 
     def get_market_cap(self, symbol: str) -> float:
-        symbol = symbol.upper().strip()
-        now = datetime.now()
-        with self._lock:
-            cached = self._cap_cache.get(symbol)
-            if cached and (now - cached["timestamp"]) < timedelta(days=1):
-                return cached["cap"]
+        symbol = self._normalize_symbol(symbol)
+        cached = cache_manager.get(f"market_data:cap:{symbol}")
+        if cached is not None:
+            return float(cached)
         self._fetch_ticker_data(symbol)
-        with self._lock:
-            return self._cap_cache[symbol]["cap"]
+        fetched = cache_manager.get(f"market_data:cap:{symbol}")
+        return float(fetched) if fetched is not None else self.FALLBACK_MARKET_CAP
 
     def get_company_name(self, symbol: str) -> str:
-        symbol = symbol.upper().strip()
-        now = datetime.now()
-        with self._lock:
-            cached = self._name_cache.get(symbol)
-            if cached and (now - cached["timestamp"]) < timedelta(days=7):
-                return cached["name"]
+        symbol = self._normalize_symbol(symbol)
+        cached = cache_manager.get(f"market_data:name:{symbol}")
+        if cached is not None:
+            return str(cached)
         self._fetch_ticker_data(symbol)
-        with self._lock:
-            return self._name_cache[symbol]["name"]
+        fetched = cache_manager.get(f"market_data:name:{symbol}")
+        return str(fetched) if fetched is not None else symbol
 
-    def get_prices_bulk(self, symbols: list) -> dict:
-        now = datetime.now()
-        missing = []
-        result = {}
-        
-        with self._lock:
-            for s in symbols:
-                s = s.upper().strip()
-                cached = self._price_cache.get(s)
-                if cached and (now - cached["timestamp"]) < timedelta(minutes=5):
-                    result[s] = cached["price"]
-                else:
-                    missing.append(s)
+    def get_prices_bulk(self, symbols: list[str]) -> dict[str, float]:
+        missing: list[str] = []
+        result: dict[str, float] = {}
+
+        normalized_symbols = [self._normalize_symbol(s) for s in symbols]
+
+        for s in normalized_symbols:
+            cached = cache_manager.get(f"market_data:price:{s}")
+            if cached is not None:
+                result[s] = float(cached)
+            else:
+                missing.append(s)
 
         if missing:
-            # 1. Look up missing symbols in DB in bulk
-            db = SessionLocal()
-            db_prices = {}
+            db_prices: dict[str, float] = {}
             try:
-                db_rows = db.query(MarketPrice).filter(MarketPrice.symbol.in_(missing)).all()
-                for row in db_rows:
-                    db_prices[row.symbol] = row.price
+                with self._get_db() as db:
+                    db_rows = (
+                        db.query(MarketPrice)
+                        .filter(MarketPrice.symbol.in_(missing))
+                        .all()
+                    )
+                    for row in db_rows:
+                        db_prices[row.symbol] = row.price
             except Exception as e:
-                print(f"Error bulk reading LTP from DB: {e}")
-            finally:
-                db.close()
+                logger.exception("Error bulk reading LTP from DB: %s", e)
 
-            # For symbols found in DB, put in result and in-memory cache
-            still_missing = []
+            still_missing: list[str] = []
             for s in missing:
                 if s in db_prices:
                     result[s] = db_prices[s]
-                    with self._lock:
-                        self._price_cache[s] = {"price": db_prices[s], "timestamp": now}
+                    cache_manager.set(f"market_data:price:{s}", db_prices[s], ttl=300)
                 else:
                     still_missing.append(s)
 
-            # 2. For any still missing, download from yfinance
             if still_missing:
                 try:
                     if len(still_missing) == 1:
-                        result[still_missing[0]] = self.get_price(still_missing[0])
+                        s = still_missing[0]
+                        result[s] = self.get_price(s)
                     else:
                         tickers_str = " ".join(still_missing)
-                        data = yf.download(tickers=tickers_str, period="1d", group_by="ticker", progress=False)
-                        
-                        db_updates = {}
+                        data = yf.download(
+                            tickers=tickers_str,
+                            period="1d",
+                            group_by="ticker",
+                            progress=False,
+                        )
+                        db_updates: dict[str, float] = {}
+
                         for s in still_missing:
-                            s = s.upper().strip()
-                            price = None
+                            s_norm = self._normalize_symbol(s)
+                            price_val = None
                             try:
-                                ticker_data = data[s] if len(still_missing) > 1 else data
-                                if not ticker_data.empty:
-                                    if "Close" in ticker_data:
-                                        price = ticker_data["Close"].dropna().iloc[-1]
+                                ticker_data = (
+                                    data[s_norm]
+                                    if len(still_missing) > 1
+                                    else data
+                                )
+                                if (
+                                    ticker_data is not None
+                                    and not ticker_data.empty
+                                    and "Close" in ticker_data
+                                ):
+                                    price_val = (
+                                        ticker_data["Close"]
+                                        .dropna()
+                                        .iloc[-1]
+                                    )
                             except Exception:
                                 pass
-                            
-                            if price is None or price <= 0:
-                                price = self.get_price(s)
+
+                            if not price_val or price_val <= 0:
+                                price = self.FALLBACK_PRICE
                             else:
-                                price = float(price)
-                                # Prepopulate price cache
-                                with self._lock:
-                                    self._price_cache[s] = {"price": price, "timestamp": now}
-                                db_updates[s] = price
-                            result[s] = price
-                        
-                        # Save the newly bulk-downloaded prices to DB
+                                price = float(price_val)
+
+                            cache_manager.set(f"market_data:price:{s_norm}", price, ttl=300)
+
+                            db_updates[s_norm] = price
+                            result[s_norm] = price
+
                         if db_updates:
-                            db = SessionLocal()
                             try:
-                                for s, p in db_updates.items():
-                                    market_price = db.query(MarketPrice).filter(MarketPrice.symbol == s).first()
-                                    if market_price:
-                                        market_price.price = p
-                                        market_price.updated_at = datetime.utcnow()
-                                    else:
-                                        market_price = MarketPrice(symbol=s, price=p, updated_at=datetime.utcnow())
-                                        db.add(market_price)
-                                db.commit()
+                                now_utc = self._utcnow()
+                                with self._get_db() as db:
+                                    for s_sym, p in db_updates.items():
+                                        market_price = (
+                                            db.query(MarketPrice)
+                                            .filter(MarketPrice.symbol == s_sym)
+                                            .first()
+                                        )
+                                        if market_price:
+                                            market_price.price = p
+                                            market_price.updated_at = now_utc
+                                        else:
+                                            db.add(
+                                                MarketPrice(
+                                                    symbol=s_sym,
+                                                    price=p,
+                                                    updated_at=now_utc,
+                                                )
+                                            )
                             except Exception as e:
-                                print(f"Error bulk saving prices to DB: {e}")
-                                db.rollback()
-                            finally:
-                                db.close()
+                                logger.exception(
+                                    "Error bulk saving prices to DB: %s", e
+                                )
                 except Exception as e:
-                    print(f"Bulk download error: {e}. Falling back to single fetch.")
+                    logger.exception(
+                        "Bulk download error: %s. Falling back to default prices.",
+                        e,
+                    )
                     for s in still_missing:
-                        result[s] = self.get_price(s)
-                        
+                        s_norm = self._normalize_symbol(s)
+                        result[s_norm] = self.FALLBACK_PRICE
+                        cache_manager.set(f"market_data:price:{s_norm}", self.FALLBACK_PRICE, ttl=300)
+
         return result
 
-    def get_historical_prices_bulk(self, symbols: list, start_date: datetime, end_date: datetime) -> dict:
+    def get_historical_prices_bulk(
+        self, symbols: list, start_date: datetime, end_date: datetime
+    ) -> dict:
         """
         Download historical daily closing prices for multiple symbols in bulk.
         Returns a dict: {symbol: {date_str: price_float}}
@@ -271,158 +328,158 @@ class MarketDataService:
             
         try:
             tickers_str = " ".join(symbols)
-            data = yf.download(tickers=tickers_str, start=start_str, end=end_str, interval="1d", group_by="ticker", progress=False)
+            data = yf.download(
+                tickers=tickers_str,
+                start=start_str,
+                end=end_str,
+                interval="1d",
+                group_by="ticker",
+                progress=False,
+            )
             
             for s in symbols:
                 try:
                     ticker_data = data[s] if len(symbols) > 1 else data
-                    if not ticker_data.empty:
-                        # Extract Close prices
+                    if ticker_data is not None and not ticker_data.empty:
                         close_series = ticker_data["Close"].dropna()
                         for date, val in close_series.items():
                             date_str = date.strftime("%Y-%m-%d")
                             result[s][date_str] = float(val)
                 except Exception as e:
-                    print(f"Error extracting history for {s}: {e}")
+                    logger.exception("Error extracting history for %s: %s", s, e)
         except Exception as e:
-            print(f"Historical bulk download failed: {e}")
+            logger.exception("Historical bulk download failed: %s", e)
             
         return result
 
-    def update_all_prices_in_db(self):
-        from app.models.holding import Holding
+    def get_prices_on_date_bulk(
+        self, symbols: list[str], target_date
+    ) -> dict[str, float]:
+        """
+        Get the closing prices for a list of symbols on a specific date.
+        If the date is a weekend/holiday, falls back to the last available closing price before that date.
+        """
+        from datetime import date as _date
+        # Fetch history for 5 days preceding target_date to handle holidays/weekends
+        start_date = datetime.combine(target_date - timedelta(days=5), datetime.min.time())
+        end_date = datetime.combine(target_date, datetime.max.time())
+        
+        history = self.get_historical_prices_bulk(symbols, start_date, end_date)
+        
+        result = {}
+        for s in symbols:
+            s_norm = self._normalize_symbol(s)
+            symbol_history = history.get(s_norm, {})
+            if symbol_history:
+                # Sort dates ascending and pick the last one (which is closest to target_date)
+                sorted_dates = sorted(symbol_history.keys())
+                last_date = sorted_dates[-1]
+                result[s_norm] = symbol_history[last_date]
+                
+        return result
+
+    def update_all_prices_in_db(self) -> None:
+        from app.models.transaction import Transaction
         from app.models.watchlist_item import WatchlistItem
-        
-        db = SessionLocal()
+
         try:
-            holding_symbols = [r[0] for r in db.query(Holding.symbol).distinct().all()]
-            watchlist_symbols = [r[0] for r in db.query(WatchlistItem.symbol).distinct().all()]
-            db_symbols = [r[0] for r in db.query(MarketPrice.symbol).distinct().all()]
-            
-            all_symbols = list(set(s.upper().strip() for s in (holding_symbols + watchlist_symbols + db_symbols) if s))
+            with self._get_db() as db:
+                holding_symbols = [
+                    r[0] for r in db.query(Transaction.symbol).distinct().all()
+                ]
+                watchlist_symbols = [
+                    r[0] for r in db.query(WatchlistItem.symbol).distinct().all()
+                ]
+                db_symbols = [
+                    r[0] for r in db.query(MarketPrice.symbol).distinct().all()
+                ]
+
+            all_symbols = list(
+                {
+                    self._normalize_symbol(s)
+                    for s in (holding_symbols + watchlist_symbols + db_symbols)
+                    if s
+                }
+            )
             if not all_symbols:
-                print("No symbols found in Holdings, Watchlist, or MarketPrices to update.")
+                logger.info("No symbols found to update.")
                 return
-                
-            print(f"Updating LTP for {len(all_symbols)} active symbols in DB...")
-            
-            prices = {}
-            # Bulk download from yfinance
-            try:
-                if len(all_symbols) == 1:
-                    symbol = all_symbols[0]
-                    ticker = yf.Ticker(symbol)
-                    price = None
-                    try:
-                        price = ticker.fast_info.get("lastPrice")
-                    except Exception:
-                        pass
-                    if price is None:
+
+            logger.info(
+                "Updating LTP for %d active symbols in DB...", len(all_symbols)
+            )
+            prices: dict[str, float] = {}
+
+            if len(all_symbols) == 1:
+                s = all_symbols[0]
+                ticker = yf.Ticker(s)
+                try:
+                    fast_info = self._get_fast_info(ticker)
+                    p = fast_info.get("lastPrice") or fast_info.get("last_price")
+                    if not p:
                         info = ticker.info or {}
-                        price = info.get("regularMarketPrice") or info.get("currentPrice")
-                    if price is None:
-                        history = ticker.history(period="1d")
-                        if not history.empty:
-                            price = history["Close"].iloc[-1]
-                    if price is not None and price > 0:
-                        prices[symbol] = float(price)
-                else:
-                    tickers_str = " ".join(all_symbols)
-                    data = yf.download(tickers=tickers_str, period="1d", group_by="ticker", progress=False)
-                    
-                    for s in all_symbols:
-                        price = None
-                        try:
-                            ticker_data = data[s] if len(all_symbols) > 1 else data
-                            if not ticker_data.empty:
-                                if "Close" in ticker_data:
-                                    price = ticker_data["Close"].dropna().iloc[-1]
-                        except Exception:
-                            pass
-                        
-                        if price is not None and price > 0:
-                            prices[s] = float(price)
-            except Exception as e:
-                print(f"Error bulk downloading in scheduler: {e}")
-                
-            # Try single fetches for any failed ones
-            for s in all_symbols:
-                if s not in prices:
+                        p = info.get("regularMarketPrice") or info.get(
+                            "currentPrice"
+                        )
+                    if p:
+                        prices[s] = float(p)
+                except Exception:
+                    logger.exception(
+                        "Error fetching single-symbol fast price for %s", s
+                    )
+            else:
+                tickers_str = " ".join(all_symbols)
+                data = yf.download(
+                    tickers=tickers_str,
+                    period="1d",
+                    group_by="ticker",
+                    progress=False,
+                )
+                for s in all_symbols:
                     try:
-                        ticker = yf.Ticker(s)
-                        price = None
-                        try:
-                            price = ticker.fast_info.get("lastPrice")
-                        except Exception:
-                            pass
-                        if price is None:
-                            info = ticker.info or {}
-                            price = info.get("regularMarketPrice") or info.get("currentPrice")
-                        if price is None:
-                            history = ticker.history(period="1d")
-                            if not history.empty:
-                                price = history["Close"].iloc[-1]
-                        if price is not None and price > 0:
-                            prices[s] = float(price)
-                    except Exception as e:
-                        print(f"Failed fallback fetch for {s} in scheduler: {e}")
-                        
-            # Save all successfully fetched prices to the DB
-            now = datetime.utcnow()
-            for s, price in prices.items():
-                market_price = db.query(MarketPrice).filter(MarketPrice.symbol == s).first()
-                if market_price:
-                    market_price.price = price
-                    market_price.updated_at = now
-                else:
-                    market_price = MarketPrice(symbol=s, price=price, updated_at=now)
-                    db.add(market_price)
-                
-                # Update memory cache
-                with self._lock:
-                    self._price_cache[s] = {"price": price, "timestamp": datetime.now()}
-            
-            db.commit()
-            print(f"Successfully updated LTP for {len(prices)} symbols in database.")
+                        ticker_data = data[s] if len(all_symbols) > 1 else data
+                        if (
+                            ticker_data is not None
+                            and not ticker_data.empty
+                            and "Close" in ticker_data
+                        ):
+                            prices[s] = float(
+                                ticker_data["Close"].dropna().iloc[-1]
+                            )
+                    except Exception:
+                        # Skip symbol but keep others
+                        logger.exception(
+                            "Error extracting close price for %s", s
+                        )
+
+            if prices:
+                now_utc = self._utcnow()
+                with self._get_db() as db:
+                    for s, price in prices.items():
+                        market_price = (
+                            db.query(MarketPrice)
+                            .filter(MarketPrice.symbol == s)
+                            .first()
+                        )
+                        if market_price:
+                            market_price.price = price
+                            market_price.updated_at = now_utc
+                        else:
+                            db.add(
+                                MarketPrice(
+                                    symbol=s,
+                                    price=price,
+                                    updated_at=now_utc,
+                                )
+                            )
+
+                        cache_manager.set(f"market_data:price:{s}", price, ttl=300)
+
+                logger.info(
+                    "Successfully updated LTP for %d symbols in database.",
+                    len(prices),
+                )
         except Exception as e:
-            print(f"Error running update_all_prices_in_db: {e}")
-            db.rollback()
-        finally:
-            db.close()
-
-
-class MarketPriceScheduler(threading.Thread):
-    def __init__(self, service):
-        super().__init__(daemon=True, name="LtpSchedulerThread")
-        self.service = service
-        self.stop_event = threading.Event()
-        
-    def run(self):
-        # Timezone for IST is UTC+5:30
-        ist_tz = timezone(timedelta(hours=5, minutes=30))
-        
-        # Track last run hour/date to prevent multiple executions within the same hour
-        last_run = None
-        
-        # Let startup finish
-        time.sleep(10)
-        
-        while not self.stop_event.is_set():
-            try:
-                now_ist = datetime.now(timezone.utc).astimezone(ist_tz)
-                current_date_hour = (now_ist.date(), now_ist.hour)
-                
-                # Check for 8:00 AM and 4:00 PM IST
-                if now_ist.hour in (8, 16) and current_date_hour != last_run:
-                    print(f"[{datetime.now()}] LTP Scheduler triggering daily refresh at hour {now_ist.hour} IST.")
-                    self.service.update_all_prices_in_db()
-                    last_run = current_date_hour
-                    print(f"[{datetime.now()}] LTP Scheduler refresh completed successfully.")
-            except Exception as e:
-                print(f"Error in LTP Scheduler background thread: {e}")
-                
-            # Wake up every 10 seconds to check time
-            self.stop_event.wait(10)
-
+            logger.exception("Error running update_all_prices_in_db: %s", e)
 
 market_data_service = MarketDataService()
