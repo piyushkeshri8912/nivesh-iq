@@ -66,7 +66,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://niveshiq-frontend-378042793272.us-central1.run.app"
+        "https://nivesh-iq-t5a1.vercel.app/"
     ],
     allow_origin_regex=r"https?://.*\.run\.app",
     allow_credentials=True,
