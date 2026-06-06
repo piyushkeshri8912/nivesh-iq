@@ -51,6 +51,8 @@ def create_transaction(
     try:
         tx_data = tx_in.model_dump()
         symbol = tx_data["symbol"].upper().strip()
+        if not symbol.endswith(".NS"):
+            symbol = f"{symbol}.NS"
         tx_data["symbol"] = symbol
         
         # Auto-populate company name if missing
@@ -102,10 +104,13 @@ def update_transaction(
         
         tx_data = tx_in.model_dump(exclude_unset=True)
         if "symbol" in tx_data:
-            tx_data["symbol"] = tx_data["symbol"].upper().strip()
+            symbol = tx_data["symbol"].upper().strip()
+            if not symbol.endswith(".NS"):
+                symbol = f"{symbol}.NS"
+            tx_data["symbol"] = symbol
             # Update company name as well if changed
             if not tx_data.get("company_name"):
-                tx_data["company_name"] = market_data_service.get_company_name(tx_data["symbol"])
+                tx_data["company_name"] = market_data_service.get_company_name(symbol)
                 
         for key, value in tx_data.items():
             setattr(db_tx, key, value)

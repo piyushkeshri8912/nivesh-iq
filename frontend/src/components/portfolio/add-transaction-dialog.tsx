@@ -265,7 +265,7 @@ export default function AddTransactionDialog({
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. INFY.NS, AAPL"
+                  placeholder="e.g. INFY, SBI"
                   value={symbol}
                   onChange={(e) => setSymbol(e.target.value)}
                   disabled={!!transactionToEdit}

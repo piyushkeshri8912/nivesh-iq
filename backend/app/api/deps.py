@@ -107,7 +107,7 @@ def get_current_user(
             ).fetchone()
             
             # Fallback to email as ID if not found in neon_auth table (e.g. mock demo sessions)
-            uuid_id = auth_user[0] if auth_user else email
+            uuid_id = str(auth_user[0]) if auth_user else email
 
             # Auto-create the user record in local tables if it doesn't exist
             user = User(
@@ -143,3 +143,23 @@ def get_current_user(
         )
 
     return user
+
+def check_guest_token_limit(db: Session, user: User) -> None:
+    """
+    Enforce a maximum cumulative token limit of 20,000 across all LLM operations
+    (chats and portfolio reviews) for guest accounts.
+    """
+    if user.email and user.email.endswith("@niveshiq.guest"):
+        from app.models.chat import ChatSession
+        from app.models.portfolio_review import PortfolioReview
+        from sqlalchemy import func
+        
+        total_chat_tokens = db.query(func.sum(ChatSession.total_tokens)).filter(ChatSession.user_id == user.id).scalar() or 0
+        total_review_tokens = db.query(func.sum(PortfolioReview.total_tokens)).filter(PortfolioReview.user_id == user.id).scalar() or 0
+        total_used = total_chat_tokens + total_review_tokens
+        
+        if total_used >= 20000:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You have reached the maximum token limit of 20,000 for guest accounts. Please sign up with a registered Google account to continue."
+            )

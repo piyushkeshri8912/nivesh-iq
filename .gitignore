@@ -59,3 +59,6 @@ skills-lock.json
 .agents
 allokate-497815-ec33555fe356.json
 deploy_gcp.ps1
+updater_gcp.ps1
+others
+Dockerfile

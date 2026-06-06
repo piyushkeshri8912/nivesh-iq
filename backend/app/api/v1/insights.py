@@ -7,7 +7,7 @@ from app.models.user import User
 from app.models.portfolio_review import PortfolioReview
 from app.schemas.insights import PortfolioReviewResponse
 from app.services.insights_engine import insights_engine
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, check_guest_token_limit
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,8 @@ def generate_portfolio_review(
     Execute the LangGraph AI workflow using Vertex AI models,
     save the compiled report in PostgreSQL, and return the report.
     """
+    # Enforce guest user token limit
+    check_guest_token_limit(db, current_user)
     try:
         logger.info(f"Starting portfolio review generation for user {current_user.id}")
         report = insights_engine.generate_review(db, current_user.id)

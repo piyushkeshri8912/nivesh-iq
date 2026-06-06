@@ -41,10 +41,12 @@ export default function LoginPanel({ onLoginSuccess }: LoginPanelProps) {
       <div className="bg-zinc-950/90 border border-zinc-900 rounded-[22px] p-6 sm:p-8 relative z-10 flex flex-col items-center">
         
         {/* Brand Header */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 font-black text-xl tracking-wider mb-3">
-            N
-          </div>
+        <div className="text-center mb-6 flex flex-col items-center">
+          <img
+            src="/logo.svg"
+            alt="NiveshIQ Logo"
+            className="w-12 h-12 rounded-2xl mb-3 object-contain"
+          />
           <h1 className="text-xl sm:text-2xl font-black text-zinc-100 tracking-tight">
             Nivesh<span className="bg-gradient-to-r from-indigo-400 to-teal-400 bg-clip-text text-transparent">IQ</span>
           </h1>

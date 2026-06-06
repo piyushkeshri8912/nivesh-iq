@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.user import User
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, check_guest_token_limit
 from app.schemas.ask import AskRequest
 from app.services.insights_engine import insights_engine
 
@@ -24,6 +24,9 @@ async def ask_copilot(
     Execute conversational portfolio copilot queries grounded in real context and stream response back.
     Supports temporary (incognito) mode where no memories are saved.
     """
+    # Enforce guest user token limit
+    check_guest_token_limit(db, current_user)
+
     try:
         generator = insights_engine.ask_copilot_stream(
             db, current_user.id, request.query, temporary=request.temporary, session_id=request.session_id

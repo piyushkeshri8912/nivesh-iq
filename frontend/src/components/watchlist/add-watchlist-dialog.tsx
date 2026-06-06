@@ -94,14 +94,12 @@ export default function AddWatchlistDialog({
               </label>
               <input
                 type="text"
-                placeholder="e.g. INFY.NS, TCS, HDFCBANK.NS"
+                placeholder="e.g. INFY, TCS, HDFCBANK"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value)}
                 className="w-full px-3.5 py-2.5 border border-zinc-200 dark:border-zinc-850 rounded-xl bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-indigo-500 text-sm font-medium"
               />
-              <p className="text-[10px] text-zinc-400 dark:text-zinc-500">
-                Use suffix .NS for NSE stocks (e.g., RELIANCE.NS)
-              </p>
+
             </div>
 
             <div className="flex gap-3 justify-end pt-4 border-t border-zinc-150 dark:border-zinc-800 mt-6">

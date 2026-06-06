@@ -269,10 +269,12 @@ export default function AskAIDrawer({ isOpen, onClose }: AskAIDrawerProps) {
           <div className="flex items-center gap-2 text-left">
             <span className="flex h-2 w-2 rounded-full bg-indigo-500 animate-ping"></span>
             <div>
-              <h4 className="text-sm font-extrabold text-zinc-100 uppercase tracking-wider leading-none">
-                {temporary ? "Incognito Chat" : "Portfolio Copilot"}
+              <h4 className="text-sm font-extrabold text-zinc-100  tracking-wider leading-none">
+                {temporary ? "Incognito Chat" : "NiveshIQ Copilot"}
               </h4>
-              <span className="text-[10px] text-zinc-500 mt-1 block">Dynamic Analytics Engine</span>
+              <span className="text-[10px] text-zinc-500 mt-1 block">
+                {temporary ? "Your Private AI Buddy" : "Your Smart AI Buddy"}
+                </span>
             </div>
           </div>
 
@@ -358,10 +360,10 @@ export default function AskAIDrawer({ isOpen, onClose }: AskAIDrawerProps) {
                 </div>
                 <div>
                   <h5 className="text-sm font-bold text-zinc-200 tracking-tight">
-                    Ask Portfolio Assistant
+                    {temporary ? "Secret Chats" : "Something On Your Mind?" }
                   </h5>
                   <p className="text-[11px] text-zinc-500 max-w-[200px] mx-auto mt-1 leading-normal">
-                    Inquire about weight spreads, watchlist returns, or sector trends dynamically.
+                    {temporary ? "Trust me, No one will know anything about our conversation, it's just between you and me" : "Inquire about weight spreads, watchlist returns, or sector trends dynamically."}
                   </p>
                 </div>
               </div>
@@ -506,7 +508,7 @@ export default function AskAIDrawer({ isOpen, onClose }: AskAIDrawerProps) {
 
         {/* Input area */}
         <div className="p-4 border-t border-zinc-800/60 bg-zinc-950 shrink-0">
-          {messages.length === 0 && (
+          {messages.length === 0 && !temporary && (
             <div className="mb-4 space-y-1.5">
               <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block pl-0.5 text-left">
                 Suggested Starters
@@ -551,7 +553,7 @@ export default function AskAIDrawer({ isOpen, onClose }: AskAIDrawerProps) {
               className="p-2.5 bg-indigo-600 hover:bg-indigo-750 text-white rounded-xl disabled:bg-zinc-900 disabled:text-zinc-600 transition-colors flex items-center justify-center cursor-pointer shrink-0"
               aria-label="Send query"
             >
-              <svg className="w-3.5 h-3.5 transform rotate-90" fill="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 " fill="currentColor" viewBox="0 0 24 24">
                 <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
               </svg>
             </button>

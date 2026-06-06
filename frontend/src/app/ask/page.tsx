@@ -8,7 +8,8 @@ import {
   createChatSession, 
   fetchSessionMessages, 
   deleteChatSession, 
-  ChatSessionResponse 
+  ChatSessionResponse,
+  loginWithGoogle
 } from "@/lib/api";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -32,15 +33,10 @@ export default function AskPage() {
   const [isThinking, setIsThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [temporary, setTemporary] = useState(false);
+  const [sessionsOpen, setSessionsOpen] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const starterPrompts = [
-    { text: "Am I too concentrated?", label: "Concentration Check", icon: "📊" },
-    { text: "What should I do with ₹10,000 this month?", label: "Investment Strategy", icon: "💡" },
-    { text: "Which watchlist stock fits my profile best?", label: "Watchlist Match", icon: "🎯" },
-    { text: "What is my biggest risk right now?", label: "Risk Exposure", icon: "⚠️" },
-  ];
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
@@ -94,6 +90,7 @@ export default function AskPage() {
     if (loading) return;
     setActiveSessionId(sessionId);
     loadSessionMessages(sessionId);
+    setSessionsOpen(false);
   };
 
   const handleNewChat = () => {
@@ -101,6 +98,7 @@ export default function AskPage() {
     setActiveSessionId(null);
     setMessages([]);
     setError(null);
+    setSessionsOpen(false);
   };
 
   const handleDeleteSession = async (sessionId: string) => {
@@ -236,74 +234,105 @@ export default function AskPage() {
   };
 
   return (
-    <div className="flex gap-6 h-[calc(100vh-8rem)] min-h-[600px] max-w-6xl mx-auto select-none">
+    <div className="flex gap-6 h-[calc(100vh-6.5rem)] md:h-[calc(100vh-8rem)] min-h-[450px] md:min-h-[600px] max-w-6xl mx-auto select-none relative">
       {/* Sessions Left Sidebar Panel */}
       {!temporary && (
-        <div className="w-64 bg-zinc-950 border border-zinc-800 rounded-3xl p-4 flex flex-col justify-between shrink-0 select-none">
-          <div className="space-y-4 flex-1 flex flex-col min-h-0">
-            <button
-              onClick={handleNewChat}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-indigo-650 hover:bg-indigo-750 text-white font-bold text-sm shadow-md transition-all duration-200 cursor-pointer active:scale-98 shrink-0"
-            >
-              <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-              </svg>
-              <span>New Chat</span>
-            </button>
+        <>
+          {/* Backdrop for mobile drawer overlay */}
+          {sessionsOpen && (
+            <div
+              className="fixed inset-0 z-30 bg-black/60 md:hidden animate-fadeIn"
+              onClick={() => setSessionsOpen(false)}
+            />
+          )}
 
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0">
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block pl-1">
-                Recent Chats
-              </span>
-              {sessions.length === 0 ? (
-                <div className="text-zinc-500 text-xs text-center py-8">No chats yet</div>
-              ) : (
-                sessions.map((s) => (
-                  <div
-                    key={s.id}
-                    className={`group flex items-center justify-between p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer text-xs font-bold ${
-                      activeSessionId === s.id
-                        ? "bg-zinc-900 border-zinc-800 text-zinc-100"
-                        : "bg-transparent border-transparent text-zinc-500 hover:bg-zinc-900/40 hover:text-zinc-300"
-                    }`}
-                    onClick={() => handleSelectSession(s.id)}
-                  >
-                    <span className="truncate pr-2 flex-1 leading-snug">{s.title}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteSession(s.id);
-                      }}
-                      className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-950/20 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer duration-200 shrink-0"
-                      title="Delete chat"
+          <div 
+            className={`${
+              sessionsOpen 
+                ? "fixed inset-y-20 left-4 z-40 w-64 h-[calc(100vh-12rem)] my-auto shadow-2xl flex" 
+                : "hidden"
+            } md:flex md:relative md:inset-auto md:w-64 md:h-auto bg-zinc-950 border border-zinc-800 rounded-3xl p-4 flex flex-col justify-between shrink-0 select-none transition-all duration-300`}
+          >
+            <div className="space-y-4 flex-1 flex flex-col min-h-0">
+              <button
+                onClick={handleNewChat}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-indigo-650 hover:bg-indigo-750 text-white font-bold text-sm shadow-md transition-all duration-200 cursor-pointer active:scale-98 shrink-0"
+              >
+                <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>New Chat</span>
+              </button>
+
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0">
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block pl-1">
+                  Recent Chats
+                </span>
+                {sessions.length === 0 ? (
+                  <div className="text-zinc-500 text-xs text-center py-8">No chats yet</div>
+                ) : (
+                  sessions.map((s) => (
+                    <div
+                      key={s.id}
+                      className={`group flex items-center justify-between p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer text-xs font-bold ${
+                        activeSessionId === s.id
+                          ? "bg-zinc-900 border-zinc-800 text-zinc-100"
+                          : "bg-transparent border-transparent text-zinc-500 hover:bg-zinc-900/40 hover:text-zinc-300"
+                      }`}
+                      onClick={() => handleSelectSession(s.id)}
                     >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-                ))
-              )}
+                      <span className="truncate pr-2 flex-1 leading-snug">{s.title}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSession(s.id);
+                        }}
+                        className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-950/20 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer duration-200 shrink-0"
+                        title="Delete chat"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Main Chat Interface Panel */}
-      <div className="flex-1 flex flex-col justify-between bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-zinc-150 dark:border-zinc-800 rounded-3xl p-6 shadow-xl shadow-zinc-100/50 dark:shadow-none min-h-0">
+      <div className="flex-1 flex flex-col justify-between bg-transparent md:bg-white/80 md:dark:bg-zinc-900/80 md:backdrop-blur-xl md:border md:border-zinc-150 md:dark:border-zinc-800 rounded-none md:rounded-3xl p-0 md:p-6 shadow-none md:shadow-xl md:shadow-zinc-100/50 md:dark:shadow-none min-h-0">
         
         {/* Header toolbar */}
         <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 pb-4 shrink-0">
-          <div className="flex flex-col gap-1.5 text-left">
-            <h1 className="text-xl font-black bg-gradient-to-r from-indigo-500 via-violet-400 to-pink-400 bg-clip-text text-transparent">
-              {temporary ? "Incognito Chat" : activeSessionId ? "Ask Copilot" : "NiveshIQ Copilot"}
-            </h1>
+          <div className="flex items-center gap-3">
+            {/* Mobile-only toggle button for chat history sidebar */}
+            {!temporary && (
+              <button
+                type="button"
+                onClick={() => setSessionsOpen(!sessionsOpen)}
+                className="md:hidden p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 text-zinc-650 dark:text-zinc-350 cursor-pointer active:scale-95 transition-all select-none"
+                title="Chat History"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h7" />
+                </svg>
+              </button>
+            )}
+            <div className="flex flex-col gap-1.5 text-left">
+              <h1 className="text-xl font-black bg-gradient-to-r from-indigo-500 via-violet-400 to-pink-400 bg-clip-text text-transparent">
+                {temporary ? "Incognito Chat" : activeSessionId ? "Ask Copilot" : "NiveshIQ Copilot"}
+              </h1>
             <p className="text-zinc-500 dark:text-zinc-400 text-xs leading-none">
               {temporary
                 ? "Incognito Mode — stateless, zero context to user profiles, nothing saved."
                 : "Personalized financial advisor with cross-session memory."}
             </p>
           </div>
+        </div>
 
           {/* Incognito Switcher */}
           <button
@@ -326,7 +355,7 @@ export default function AskPage() {
         </div>
 
         {/* Conversation flow messages list */}
-        <div className="flex-1 space-y-6 overflow-y-auto max-h-[500px] my-6 pr-2 scrollbar-thin select-text">
+        <div className="flex-1 space-y-6 overflow-y-auto max-h-none md:max-h-[500px] my-6 pr-2 scrollbar-thin select-text">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center text-center py-16 space-y-4">
               <div className="w-14 h-14 rounded-3xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center animate-pulse border border-indigo-100 dark:border-indigo-900/30 shadow-md">
@@ -335,10 +364,10 @@ export default function AskPage() {
                 </svg>
               </div>
               <h3 className="text-lg font-bold text-zinc-800 dark:text-zinc-200 tracking-tight">
-                Ask NiveshIQ Copilot
+                {temporary ? "Secret Chats" : "Something On Your Mind "}
               </h3>
               <p className="text-xs text-zinc-500 dark:text-zinc-405 max-w-sm leading-relaxed">
-                Receive compliance-friendly, evidence-backed advice about weight spreads, watchlist items, or macro events.
+                {temporary ? "Trust me no one will know anything about our conversation, it's just you and me" : "Receive compliance-friendly, evidence-backed advice about weight spreads, watchlist items, or macro events."}
               </p>
             </div>
           ) : (
@@ -420,23 +449,41 @@ export default function AskPage() {
 
           {/* Error Banner */}
           {error && (
-            <div className="bg-rose-50/50 dark:bg-rose-950/10 border border-rose-200/50 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 p-4 rounded-2xl flex items-center justify-between gap-3 animate-fadeIn shrink-0">
+            <div className="bg-rose-50/50 dark:bg-rose-950/10 border border-rose-200/50 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fadeIn shrink-0">
               <div className="flex items-center gap-3">
-                <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 shrink-0 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span className="text-xs font-semibold">{error}</span>
               </div>
-              <button
-                type="button"
-                onClick={handleRetry}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-100 hover:bg-rose-200 dark:bg-rose-950/45 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-350 text-xs font-bold transition-all duration-150 cursor-pointer active:scale-95 shrink-0"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17" />
-                </svg>
-                <span>Retry</span>
-              </button>
+              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+                {(error.toLowerCase().includes("token limit") || error.toLowerCase().includes("guest")) ? (
+                  <button
+                    type="button"
+                    onClick={() => loginWithGoogle()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all duration-150 cursor-pointer active:scale-95 shadow-sm"
+                  >
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                    </svg>
+                    <span>Sign Up with Google</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleRetry}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-100 hover:bg-rose-200 dark:bg-rose-950/45 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-350 text-xs font-bold transition-all duration-150 cursor-pointer active:scale-95"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17" />
+                    </svg>
+                    <span>Retry</span>
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -445,37 +492,6 @@ export default function AskPage() {
 
         {/* Input area */}
         <div className="border-t border-zinc-100 dark:border-zinc-800/80 pt-4 shrink-0">
-          {/* Quick starter tags */}
-          {messages.length === 0 && (
-            <div className="space-y-2 mb-4">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block pl-1">
-                Suggested Prompts
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {starterPrompts.map((prompt, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSend(prompt.text)}
-                    disabled={loading}
-                    className="flex items-center justify-between text-left p-3.5 rounded-2xl bg-zinc-50 hover:bg-indigo-50/40 dark:bg-zinc-800/40 dark:hover:bg-zinc-800/90 border border-zinc-100 hover:border-indigo-100 dark:border-zinc-800/85 text-zinc-750 hover:text-indigo-600 dark:text-zinc-300 dark:hover:text-indigo-400 transition-all duration-200 active:scale-98 cursor-pointer"
-                  >
-                    <div className="space-y-0.5">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-                        {prompt.icon} {prompt.label}
-                      </span>
-                      <span className="text-xs font-bold block leading-snug">
-                        {prompt.text}
-                      </span>
-                    </div>
-                    <svg className="w-4 h-4 text-zinc-400 dark:text-zinc-500 shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Query submit box */}
           <form
             onSubmit={(e) => {
@@ -488,7 +504,7 @@ export default function AskPage() {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Ask about weight spreads, watchlist returns, or sector trends..."
+              placeholder="Ask Copilot"
               disabled={loading}
               className="flex-1 bg-zinc-50 dark:bg-zinc-800/30 hover:bg-zinc-100/50 focus:bg-white dark:hover:bg-zinc-800/50 dark:focus:bg-zinc-900 border border-zinc-200 focus:border-indigo-500 dark:border-zinc-800 dark:focus:border-indigo-500 rounded-2xl px-4 py-3.5 text-sm text-zinc-800 dark:text-zinc-200 focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all duration-200 font-semibold"
             />

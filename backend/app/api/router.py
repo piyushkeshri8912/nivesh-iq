@@ -1,4 +1,3 @@
-from sched import scheduler
 import logging
 
 from fastapi import APIRouter
@@ -18,6 +17,6 @@ api_router.include_router(watchlist.router, prefix="/watchlist", tags=["watchlis
 api_router.include_router(news.router, prefix="/news", tags=["news"])
 api_router.include_router(insights.router, prefix="/insights", tags=["insights"])
 api_router.include_router(ask.router, prefix="/ask", tags=["ask"])
-api_router.include_router(scheduler.router, prefix="/schedular", tags=["Schedular"])
+api_router.include_router(scheduler.router, prefix="/scheduler", tags=["Scheduler"])
 
     

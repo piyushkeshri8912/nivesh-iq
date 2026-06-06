@@ -78,9 +78,11 @@ export default function Sidebar({
         
         {/* Brand Logo & Name */}
         <Link href="/" className="flex items-center gap-3 shrink-0" onClick={onClose}>
-          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white text-lg tracking-wider shadow-md shadow-indigo-500/20 shrink-0">
-            N
-          </div>
+          <img
+            src="/logo.svg"
+            alt="NiveshIQ Logo"
+            className="w-8 h-8 rounded-lg shrink-0 object-contain"
+          />
           <span className={`font-semibold text-lg tracking-tight bg-gradient-to-r from-zinc-50 to-zinc-400 bg-clip-text text-transparent transition-all duration-300 ${
             isCollapsed ? "md:hidden" : ""
           }`}>

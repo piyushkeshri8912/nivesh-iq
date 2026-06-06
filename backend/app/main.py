@@ -60,14 +60,11 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS to allow Next.js dev server, production deploys, and Cloud Run origins
+# Configure CORS dynamically from settings
+origins = [o.strip() for o in settings.BACKEND_CORS_ORIGINS.split(";") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://nivesh-iq-t5a1.vercel.app/"
-    ],
+    allow_origins=origins,
     allow_origin_regex=r"https?://.*\.run\.app",
     allow_credentials=True,
     allow_methods=["*"],
@@ -78,4 +75,5 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 if __name__ == "__main__":
     import uvicorn
+    logging.info(f"Starting backend server")
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

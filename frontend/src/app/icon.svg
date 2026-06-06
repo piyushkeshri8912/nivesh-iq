@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- Background -->
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#09090b"/>
+      <stop offset="1" stop-color="#13111c"/>
+    </linearGradient>
+
+    <!-- N body gradient: deep indigo → vibrant violet -->
+    <linearGradient id="bar" x1="256" y1="400" x2="256" y2="110" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3730a3"/>
+      <stop offset=".5" stop-color="#6d28d9"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+
+    <!-- Rising graph gradient: teal → cyan -->
+    <linearGradient id="line" x1="100" y1="370" x2="440" y2="90" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0d9488"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+
+    <!-- Neon glow -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="7" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Soft ambient glow -->
+    <filter id="ambient">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+
+  <!-- Dark background card -->
+  <rect width="512" height="512" rx="108" fill="url(#bg)"/>
+  <rect x="2.5" y="2.5" width="507" height="507" rx="106.5" fill="none"
+        stroke="white" stroke-opacity=".04" stroke-width="1.5"/>
+
+  <!-- Ambient colour spots -->
+  <circle cx="160" cy="330" r="70" fill="#6d28d9" opacity=".06" filter="url(#ambient)"/>
+  <circle cx="390" cy="150" r="50" fill="#14b8a6" opacity=".06" filter="url(#ambient)"/>
+
+  <!-- ═══ N MONOGRAM ═══ -->
+  <!-- Left pillar -->
+  <rect x="116" y="128" width="58" height="256" rx="29" fill="url(#bar)"/>
+
+  <!-- Diagonal: top-left → bottom-right (standard Latin N) -->
+  <line x1="145" y1="156" x2="367" y2="356"
+        stroke="url(#bar)" stroke-width="54" stroke-linecap="round"/>
+
+  <!-- Right pillar -->
+  <rect x="338" y="128" width="58" height="256" rx="29" fill="url(#bar)"/>
+
+  <!-- ═══ RISING GRAPH LINE ═══ -->
+  <!-- Glow layer -->
+  <polyline points="108,356 218,282 272,306 382,174 428,114"
+            fill="none" stroke="#14b8a6" stroke-width="13"
+            stroke-linecap="round" stroke-linejoin="round"
+            opacity=".3" filter="url(#glow)"/>
+
+  <!-- Main crisp line -->
+  <polyline points="108,356 218,282 272,306 382,174 428,114"
+            fill="none" stroke="url(#line)" stroke-width="9"
+            stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Arrow head at peak -->
+  <polyline points="406,112 430,112 430,136"
+            fill="none" stroke="url(#line)" stroke-width="9"
+            stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ═══ AI SPARKLE ═══ -->
+  <circle cx="444" cy="80" r="22" fill="#22d3ee" opacity=".1" filter="url(#ambient)"/>
+  <path d="M444 58 C444 69 453 78 464 78 C453 78 444 87 444 98
+           C444 87 435 78 424 78 C435 78 444 69 444 58Z" fill="#22d3ee"/>
+  <circle cx="444" cy="78" r="3" fill="white" opacity=".75"/>
+</svg>

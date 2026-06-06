@@ -92,6 +92,8 @@ def add_watchlist_item(
 ):
     try:
         symbol = item_in.symbol.upper().strip()
+        if not symbol.endswith(".NS"):
+            symbol = f"{symbol}.NS"
         
         # Check if already exists on user's watchlist
         existing = (

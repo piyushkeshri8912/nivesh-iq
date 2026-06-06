@@ -16,15 +16,21 @@ class CacheManager:
     def _init_redis(self):
         try:
             import redis
+            
+            # Upstash requires TLS connection. Auto-upgrade connection scheme to 'rediss://' if needed.
+            connection_url = self.redis_url
+            if connection_url and connection_url.startswith("redis://") and "upstash.io" in connection_url:
+                connection_url = connection_url.replace("redis://", "rediss://")
+                
             # Connect to Redis
             self.redis_client = redis.from_url(
-                self.redis_url, 
+                connection_url, 
                 socket_connect_timeout=2.0, 
                 decode_responses=True
             )
             # Test connection
             self.redis_client.ping()
-            logger.info("Connected to Redis server", extra={"redis_url": self.redis_url})
+            logger.info("Connected to Redis server", extra={"redis_url": connection_url})
         except Exception as e:
             self.redis_client = None
             logger.warning(f"[CACHE] Redis connection unavailable: {e}. Using In-Memory Cache fallback.")
