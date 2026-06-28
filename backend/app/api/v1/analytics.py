@@ -31,7 +31,7 @@ def get_exposures(
             "sectors": sectors,
             "market_caps": caps
         }
-        cache_manager.set(cache_key, jsonable_encoder(res), ttl=300)
+        cache_manager.set(cache_key, jsonable_encoder(res), ttl=600)
         return res
     except Exception as e:
         logger.error(f"Failed to calculate exposures for user {current_user.id}: {e}", exc_info=True)
@@ -60,7 +60,7 @@ def get_performance_history(
 
         from app.services.portfolio_history_service import portfolio_history_service
         res = portfolio_history_service.calculate_historical_performance(db, current_user.id)
-        cache_manager.set(cache_key, jsonable_encoder(res), ttl=300)
+        cache_manager.set(cache_key, jsonable_encoder(res), ttl=600)
         return res
     except Exception as e:
         logger.error(f"Failed to calculate performance history for user {current_user.id}: {e}", exc_info=True)

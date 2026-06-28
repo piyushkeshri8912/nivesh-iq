@@ -14,10 +14,10 @@ class HoldingsService:
             cache_key = f"user_cache:{user_id}:holdings_service"
             cached_data = cache_manager.get(cache_key)
             if cached_data:
-                logger.info(f"Returning cached holdings for user {user_id}")
+                logger.debug(f"[HoldingsService] Cache HIT. Returning cached holdings response for user {user_id}")
                 return PortfolioHoldingsListResponse(**cached_data)
 
-            logger.info(f"Calculating holdings for user {user_id}")
+            logger.info(f"[HoldingsService] Cache MISS. Starting holdings calculation for user {user_id}")
 
             # 1. Fetch all transactions for this user, sorted chronologically
             transactions = (
@@ -27,6 +27,7 @@ class HoldingsService:
                 .all()
             )
             
+            logger.info(f"[HoldingsService] Loaded {len(transactions)} transactions from database for user {user_id}")
             # fallback sorting if DB index ordering is not applied
             transactions = sorted(transactions, key=lambda x: x.executed_at)
 
@@ -83,9 +84,11 @@ class HoldingsService:
                         "average_buy_price": h["average_buy_price"]
                     })
 
-            # 4. Fetch live market prices in bulk for active symbols
+            logger.info(f"[HoldingsService] Computed {len(active_holdings)} active holdings for user {user_id}: {active_holdings}")
+            # 4. Fetch live market prices and metadata in bulk for active symbols
             active_symbols = [x["symbol"] for x in active_holdings]
-            market_prices = market_data_service.get_prices_bulk(active_symbols)
+            logger.info(f"[HoldingsService] Requesting market price/metadata bulk lookup for: {active_symbols}")
+            metadata_bulk = market_data_service.get_metadata_bulk(active_symbols, db=db)
 
             # 5. Build individual holding responses
             holdings_responses: List[HoldingResponse] = []
@@ -98,7 +101,7 @@ class HoldingsService:
                 symbol = h["symbol"]
                 qty = h["quantity"]
                 avg_buy = h["average_buy_price"]
-                mkt_price = market_prices.get(symbol, avg_buy)  # Fallback to avg_buy if unavailable
+                mkt_price = metadata_bulk.get(symbol, {}).get("price", avg_buy)  # Fallback to avg_buy if unavailable
                 
                 mkt_value = qty * mkt_price
                 holding_cost = qty * avg_buy
@@ -127,7 +130,7 @@ class HoldingsService:
                 unrealized_pnl = mkt_value - holding_cost
                 unrealized_pnl_percent = (unrealized_pnl / holding_cost * 100.0) if holding_cost > 0 else 0.0
                 allocation_percent = (mkt_value / total_value * 100.0) if total_value > 0 else 0.0
-                company_name = market_data_service.get_company_name(symbol)
+                company_name = metadata_bulk.get(symbol, {}).get("company_name", symbol)
 
                 holdings_responses.append(
                     HoldingResponse(
@@ -158,6 +161,7 @@ class HoldingsService:
                 total_realized_pnl=total_realized_pnl
             )
 
+            logger.info(f"[HoldingsService] Completed holdings calculation for user {user_id}. Summary -> Cost: {total_cost:.2f}, Value: {total_value:.2f}, Unrealized P&L: {total_unrealized_pnl:.2f}")
             logger.info(f"Successfully calculated holdings for user {user_id}")
 
             response_obj = PortfolioHoldingsListResponse(
@@ -165,7 +169,7 @@ class HoldingsService:
                 summary=summary
             )
             
-            cache_manager.set(cache_key, response_obj.model_dump(), ttl=300)
+            cache_manager.set(cache_key, response_obj.model_dump(), ttl=900)
             return response_obj
         except Exception as e:
             logger.error(f"Failed to calculate holdings for user {user_id}: {e}", exc_info=True)

@@ -8,7 +8,7 @@ class ChatSession(Base):
     __tablename__ = "chat_sessions"
 
     id = Column(String(255), primary_key=True, index=True)
-    user_id = Column(String(255), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    user_id = Column(String(255), ForeignKey("users.id", ondelete="CASCADE"), index=True, unique=True, nullable=False)
     created_at = Column(DateTime(timezone=True), default=func.now(), nullable=False)
     last_message_at = Column(DateTime(timezone=True), default=func.now(), nullable=False)
 

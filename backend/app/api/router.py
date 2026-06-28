@@ -1,7 +1,8 @@
 import logging
 
 from fastapi import APIRouter
-from app.api.v1 import health, profile, transactions, portfolio, analytics, watchlist, news, insights, ask, scheduler
+from app.api.v1 import health, profile, transactions, portfolio, analytics, watchlist, ask
+from app.api.v1 import app_context
 
 logger = logging.getLogger(__name__)
 
@@ -14,9 +15,7 @@ api_router.include_router(transactions.router, prefix="/transactions", tags=["tr
 api_router.include_router(portfolio.router, prefix="/portfolio", tags=["portfolio"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(watchlist.router, prefix="/watchlist", tags=["watchlist"])
-api_router.include_router(news.router, prefix="/news", tags=["news"])
-api_router.include_router(insights.router, prefix="/insights", tags=["insights"])
+api_router.include_router(app_context.router, prefix="/insights", tags=["insights"])
 api_router.include_router(ask.router, prefix="/ask", tags=["ask"])
-api_router.include_router(scheduler.router, prefix="/scheduler", tags=["Scheduler"])
 
     

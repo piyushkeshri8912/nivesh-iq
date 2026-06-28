@@ -10,7 +10,7 @@ export const authClient = createAuthClient(
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "") + "/api/v1";
 
 // Security Header Injection Helper
-function getAuthHeaders(hasBody: boolean = false): HeadersInit {
+function getAuthHeaders(hasBody: boolean = false): Record<string, string> {
   const token = typeof window !== "undefined" ? localStorage.getItem("niveshiq_token") : null;
   const headers: Record<string, string> = {
     "Authorization": `Bearer ${token || "demo-token"}`,
@@ -275,6 +275,38 @@ export async function deleteTransaction(txId: number): Promise<boolean> {
   }
 }
 
+export interface UploadTradesResult {
+  imported: number;
+  duplicates: number;
+  skipped: number;
+  errors: string[];
+  message: string;
+}
+
+export async function uploadTrades(file: File): Promise<UploadTradesResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  // Get auth headers but omit Content-Type (browser sets multipart boundary automatically)
+  const authHeaders = getAuthHeaders();
+  const headers: Record<string, string> = {};
+  if (authHeaders.Authorization) {
+    headers["Authorization"] = authHeaders.Authorization;
+  }
+
+  const res = await fetch(`${API_BASE}/transactions/upload`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Upload failed" }));
+    throw new Error(err.detail || "Failed to upload trades");
+  }
+  return await res.json();
+}
+
 // PORTFOLIO APIS
 export async function fetchHoldings(): Promise<PortfolioHoldingsListResponse | null> {
   try {
@@ -327,8 +359,6 @@ export interface PortfolioSnapshotResponse {
   captured_at: string;
   total_value: number;
   total_cost: number;
-  risk_score: number;
-  diversification_score: number;
 }
 
 export async function fetchExposures(): Promise<ExposuresResponse | null> {
@@ -620,13 +650,6 @@ export async function askCopilot(
   return finalPayload;
 }
 
-export interface ChatSessionResponse {
-  id: string;
-  title: string;
-  created_at: string;
-  last_message_at: string;
-}
-
 export interface ChatMessageResponse {
   id: number;
   role: "user" | "assistant";
@@ -634,52 +657,29 @@ export interface ChatMessageResponse {
   created_at: string;
 }
 
-export async function fetchChatSessions(): Promise<ChatSessionResponse[]> {
-  try {
-    const res = await fetch(`${API_BASE}/ask/sessions`, {
-      cache: "no-store",
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) throw new Error("Failed to fetch chat sessions");
-    return await res.json();
-  } catch (error) {
-    console.error("fetchChatSessions error:", error);
-    return [];
-  }
+export interface ActiveSessionResponse {
+  session_id: string;
+  messages: ChatMessageResponse[];
 }
 
-export async function createChatSession(): Promise<{ session_id: string }> {
-  const res = await fetch(`${API_BASE}/ask/sessions`, {
-    method: "POST",
+export async function fetchActiveSession(): Promise<ActiveSessionResponse> {
+  const res = await fetch(`${API_BASE}/ask/session`, {
+    cache: "no-store",
     headers: getAuthHeaders(),
   });
-  if (!res.ok) throw new Error("Failed to create chat session");
+  if (!res.ok) throw new Error("Failed to fetch active chat session");
   return await res.json();
 }
 
-export async function fetchSessionMessages(sessionId: string): Promise<ChatMessageResponse[]> {
+export async function clearChatHistory(): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}/ask/sessions/${sessionId}/messages`, {
-      cache: "no-store",
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) throw new Error("Failed to fetch session messages");
-    return await res.json();
-  } catch (error) {
-    console.error("fetchSessionMessages error:", error);
-    return [];
-  }
-}
-
-export async function deleteChatSession(sessionId: string): Promise<boolean> {
-  try {
-    const res = await fetch(`${API_BASE}/ask/sessions/${sessionId}`, {
+    const res = await fetch(`${API_BASE}/ask/session/clear`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
     return res.ok;
   } catch (error) {
-    console.error("deleteChatSession error:", error);
+    console.error("clearChatHistory error:", error);
     return false;
   }
 }

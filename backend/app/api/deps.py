@@ -34,9 +34,6 @@ def cleanup_expired_guests(db: Session) -> None:
             guest_id = guest[0]
             guest_email = guest[1]
             
-            # Delete user memories
-            db.execute(text("DELETE FROM public.user_memories WHERE user_id = :user_id"), {"user_id": guest_id})
-            
             # Delete chat messages and sessions
             db.execute(text(
                 "DELETE FROM public.chat_messages WHERE session_id IN (SELECT id FROM public.chat_sessions WHERE user_id = :user_id)"

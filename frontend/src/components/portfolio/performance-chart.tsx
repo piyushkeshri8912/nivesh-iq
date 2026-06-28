@@ -45,14 +45,16 @@ export default function PerformanceChart({ history }: PerformanceChartProps) {
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white border border-zinc-200 p-4 rounded-2xl shadow-xl dark:bg-zinc-950 dark:border-zinc-800 space-y-1">
-          <p className="text-xs text-zinc-400 font-semibold">{payload[0].payload.date}</p>
-          <p className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
-            Value: ₹{payload[0].value.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-          </p>
-          <p className="text-xs font-medium text-zinc-500">
-            Cost Basis: ₹{payload[0].payload.cost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-          </p>
+        <div className="bg-zinc-900 border border-zinc-800 p-3.5 rounded-xl shadow-xl space-y-1">
+          <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">{payload[0].payload.date}</p>
+          <div className="space-y-0.5">
+            <p className="text-sm font-bold text-zinc-100">
+              Value: <span className="font-mono">₹{payload[0].value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            </p>
+            <p className="text-xs font-semibold text-zinc-400">
+              Invested : <span className="font-mono">₹{payload[0].payload.cost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            </p>
+          </div>
         </div>
       );
     }
@@ -62,17 +64,12 @@ export default function PerformanceChart({ history }: PerformanceChartProps) {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-baseline">
-        <div>
-          <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
-            Net Asset Value History
+        <div className="space-y-1">
+          <h3 className="text-lg font-bold text-zinc-100">
+            Portfolio Value History
           </h3>
-          <p className="text-xs text-zinc-400">Time-series tracking of your portfolio worth (Real Data Only)</p>
         </div>
-        {history.length === 1 && (
-          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/20 dark:text-indigo-400 animate-pulse">
-            Seeding Day 0 Snapshot
-          </span>
-        )}
+
       </div>
 
       <div className="h-72 w-full min-w-0">
@@ -80,29 +77,29 @@ export default function PerformanceChart({ history }: PerformanceChartProps) {
           <AreaChart data={paddedData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
             <defs>
               <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2}/>
-                <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
+                <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" className="dark:stroke-zinc-800" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" className="stroke-zinc-800/40" />
             <XAxis
               dataKey="date"
               tickLine={false}
               axisLine={false}
-              tick={{ fill: "#a1a1aa", fontSize: 11 }}
+              tick={{ fill: "#94a3b8", fontSize: 11, fontWeight: 500 }}
             />
             <YAxis
               tickLine={false}
               axisLine={false}
-              tick={{ fill: "#a1a1aa", fontSize: 11 }}
+              tick={{ fill: "#94a3b8", fontSize: 11, fontWeight: 500 }}
               tickFormatter={(v) => `₹${v.toLocaleString(undefined, { notation: "compact" })}`}
             />
             <Tooltip content={<CustomTooltip />} />
             <Area
               type="monotone"
               dataKey="value"
-              stroke="#4f46e5"
-              strokeWidth={3}
+              stroke="#6366f1"
+              strokeWidth={2}
               fillOpacity={1}
               fill="url(#colorValue)"
             />

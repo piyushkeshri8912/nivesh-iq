@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3840" height="2160" viewBox="0 0 3840 2160">
+<defs>
+  <radialGradient id="bg" cx="70%" cy="35%">
+    <stop offset="0%" stop-color="#0b2f66"/>
+    <stop offset="35%" stop-color="#071a3d"/>
+    <stop offset="100%" stop-color="#020812"/>
+  </radialGradient>
+
+  <filter id="glow">
+    <feGaussianBlur stdDeviation="8" result="b"/>
+    <feMerge>
+      <feMergeNode in="b"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+  </filter>
+</defs>
+
+<rect width="100%" height="100%" fill="url(#bg)"/>
+
+<!-- ambient waves -->
+<g opacity="0.18" stroke="#3ea0ff" fill="none">
+  <path d="M0 1700 C700 1400,1200 2000,1900 1700 S3000 1400,3840 1800" stroke-width="3"/>
+  <path d="M0 1780 C800 1500,1300 2050,2100 1750 S3100 1450,3840 1850" stroke-width="2"/>
+  <path d="M0 1860 C900 1550,1500 2100,2400 1800 S3200 1500,3840 1900" stroke-width="2"/>
+</g>
+
+<!-- globe -->
+<g transform="translate(2550,980)">
+  <circle r="520" fill="none" stroke="#52a8ff" stroke-width="4" opacity="0.8" filter="url(#glow)"/>
+  <circle r="500" fill="none" stroke="#1f5fbf" stroke-width="1"/>
+  <g stroke="#2f7fe8" opacity="0.35">
+    <ellipse rx="500" ry="500" fill="none"/>
+    <ellipse rx="400" ry="500" fill="none"/>
+    <ellipse rx="300" ry="500" fill="none"/>
+    <ellipse rx="200" ry="500" fill="none"/>
+    <ellipse rx="500" ry="150" fill="none"/>
+    <ellipse rx="500" ry="300" fill="none"/>
+  </g>
+</g>
+
+<!-- network -->
+<g stroke="#59b0ff" stroke-width="2" opacity="0.5">
+  <line x1="1800" y1="600" x2="2100" y2="750"/>
+  <line x1="2100" y1="750" x2="2400" y2="520"/>
+  <line x1="2400" y1="520" x2="2800" y2="700"/>
+  <line x1="2100" y1="750" x2="2300" y2="1050"/>
+</g>
+
+<g fill="#59b0ff" filter="url(#glow)">
+  <circle cx="1800" cy="600" r="8"/>
+  <circle cx="2100" cy="750" r="8"/>
+  <circle cx="2400" cy="520" r="8"/>
+  <circle cx="2800" cy="700" r="8"/>
+  <circle cx="2300" cy="1050" r="8"/>
+</g>
+
+<!-- finance charts -->
+<g opacity="0.25">
+  <rect x="2800" y="1450" width="700" height="350" rx="12" fill="none" stroke="#2f7fe8"/>
+  <polyline points="2850,1680 2950,1620 3020,1650 3120,1550 3200,1600 3330,1500 3450,1560 3520,1470"
+            fill="none" stroke="#59b0ff" stroke-width="4"/>
+</g>
+
+<g opacity="0.18">
+  <rect x="1700" y="1200" width="25" height="280" fill="#59b0ff"/>
+  <rect x="1770" y="1100" width="25" height="380" fill="#59b0ff"/>
+  <rect x="1840" y="1250" width="25" height="230" fill="#59b0ff"/>
+  <rect x="1910" y="950" width="25" height="530" fill="#59b0ff"/>
+  <rect x="1980" y="800" width="25" height="680" fill="#59b0ff"/>
+</g>
+</svg>
