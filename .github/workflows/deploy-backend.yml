@@ -31,11 +31,11 @@ jobs:
 
     - name: Run Pytest Test Suite
       env:
-        DATABASE_URL: sqlite:///:memory:
-        VERTEX_PROJECT_ID: mock-project-id
+        DATABASE_URL: "sqlite:///:memory:"
+        VERTEX_PROJECT_ID: "mock-project-id"
         GOOGLE_APPLICATION_CREDENTIALS: ""
-        NEON_AUTH_BASE_URL: https://mock-auth.com
-        NEON_AUTH_COOKIE_SECRET: mock-secret
+        NEON_AUTH_BASE_URL: "https://mock-auth.com"
+        NEON_AUTH_COOKIE_SECRET: "mock-secret"
         REDIS_URL: ""
       run: |
         pytest backend/tests/ -v
