@@ -20,3 +20,6 @@ python-multipart
 langchain-core
 langchain-google-genai
 numpy
+pytest
+pytest-asyncio
+pytest-mock
