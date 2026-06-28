@@ -1,0 +1,17 @@
+# .gcloudignore
+
+# Ignore version control
+.git/
+.gitignore
+
+# Ignore local env and caches
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Ignore tests to keep deployment container size minimal
+tests/
