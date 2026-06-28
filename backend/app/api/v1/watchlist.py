@@ -75,7 +75,7 @@ def get_watchlist(
         if db_updated:
             db.commit()
             
-        cache_manager.set(cache_key, jsonable_encoder(response), ttl=60) # 1 minute cache
+        cache_manager.set(cache_key, jsonable_encoder(response), ttl=600) # 10 minute cache
         return response
     except Exception as e:
         logger.error(f"Failed to fetch watchlist for user {current_user.id}: {e}", exc_info=True)

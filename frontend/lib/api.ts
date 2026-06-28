@@ -327,8 +327,6 @@ export interface PortfolioSnapshotResponse {
   captured_at: string;
   total_value: number;
   total_cost: number;
-  risk_score: number;
-  diversification_score: number;
 }
 
 export async function fetchExposures(): Promise<ExposuresResponse | null> {

@@ -9,7 +9,9 @@ MARKET_CAP_THRESHOLD_INR = {
     "MID": 50000000000.0,     # ₹5,000 Crores
 }
 
-def get_market_cap_bucket(symbol: str, market_cap: float) -> str:
+def get_market_cap_bucket(symbol: str, market_cap: float | None) -> str:
+    if market_cap is None:
+        return "ETFs & Others"
     symbol = symbol.upper().strip()
     thresholds = MARKET_CAP_THRESHOLD_INR
     if market_cap >= thresholds["LARGE"]:
@@ -25,7 +27,7 @@ def calculate_sector_exposure(db: Session, user_id: str) -> List[Dict]:
     total_val = res.summary.total_value
 
     for h in res.holdings:
-        sector = market_data_service.get_sector(h.symbol)
+        sector = market_data_service.get_sector(h.symbol, db=db)
         sector_sums[sector] = sector_sums.get(sector, 0.0) + h.market_value
 
     exposure = []
@@ -41,11 +43,11 @@ def calculate_sector_exposure(db: Session, user_id: str) -> List[Dict]:
 
 def calculate_market_cap_exposure(db: Session, user_id: str) -> List[Dict]:
     res = holdings_service.calculate_holdings(db, user_id)
-    cap_sums = {"LARGE": 0.0, "MID": 0.0, "SMALL": 0.0}
+    cap_sums = {"LARGE": 0.0, "MID": 0.0, "SMALL": 0.0, "ETFs & Others": 0.0}
     total_val = res.summary.total_value
 
     for h in res.holdings:
-        cap_val = market_data_service.get_market_cap(h.symbol)
+        cap_val = market_data_service.get_market_cap(h.symbol, db=db)
         bucket = get_market_cap_bucket(h.symbol, cap_val)
         cap_sums[bucket] += h.market_value
 

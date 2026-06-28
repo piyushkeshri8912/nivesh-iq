@@ -7,4 +7,8 @@ class MarketPrice(Base):
 
     symbol = Column(String, primary_key=True, index=True)
     price = Column(Float, nullable=False)
+    company_name = Column(String, nullable=True)
+    sector = Column(String, nullable=True)
+    market_cap = Column(Float, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+

@@ -21,28 +21,7 @@ def _ensure_vector_extension() -> None:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
 
 
-def _ensure_user_memory_vector_schema() -> None:
-    check_sql = text(
-        """
-        SELECT udt_name
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = 'user_memories'
-          AND column_name = 'embedding';
-        """
-    )
-    with engine.begin() as conn:
-        result = conn.execute(check_sql).mappings().first()
-        if not result:
-            return
-        if result["udt_name"] in {"json", "jsonb"}:
-            conn.execute(text(
-                """
-                ALTER TABLE public.user_memories
-                ALTER COLUMN embedding TYPE vector(768)
-                USING embedding::text::vector(768);
-                """
-            ))
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -50,8 +29,6 @@ async def lifespan(app: FastAPI):
     _ensure_vector_extension()
     # Startup DB schema creation
     Base.metadata.create_all(bind=engine)
-    # Fix legacy json/jsonb embedding column if needed
-    _ensure_user_memory_vector_schema()
     yield
 
 app = FastAPI(
@@ -60,15 +37,21 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS dynamically from settings
-origins = [o.strip() for o in settings.BACKEND_CORS_ORIGINS.split(";") if o.strip()]
+## CORS Configuration
+# Parse whitelisted origins from settings
+allowed_origins = []
+if settings.ALLOWED_CORS_ORIGINS:
+    allowed_origins = [origin.strip() for origin in settings.ALLOWED_CORS_ORIGINS.split(",") if origin.strip()]
+
+# In production, allow Vercel subdomains dynamically to prevent circular dependencies
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_origin_regex=r"https?://.*\.run\.app",
+    allow_origins=allowed_origins if allowed_origins else ["http://localhost:3000"],
+    allow_origin_regex=r"^(https://.*\.vercel\.app|http://localhost:3000)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
 )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)

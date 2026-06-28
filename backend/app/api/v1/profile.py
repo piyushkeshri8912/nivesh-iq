@@ -93,9 +93,6 @@ def delete_account(
         user_id = current_user.id
         email = current_user.email
         
-        # 1. Delete user memories
-        db.execute(text("DELETE FROM public.user_memories WHERE user_id = :user_id"), {"user_id": user_id})
-        
         # 2. Delete chat messages and sessions
         db.execute(text(
             "DELETE FROM public.chat_messages WHERE session_id IN (SELECT id FROM public.chat_sessions WHERE user_id = :user_id)"
@@ -107,6 +104,7 @@ def delete_account(
         db.execute(text("DELETE FROM public.watchlist_items WHERE user_id = :user_id"), {"user_id": user_id})
         db.execute(text("DELETE FROM public.portfolio_reviews WHERE user_id = :user_id"), {"user_id": user_id})
         db.execute(text("DELETE FROM public.user_profiles WHERE user_id = :user_id"), {"user_id": user_id})
+        db.execute(text("DELETE FROM public.portfolio_daily_history WHERE user_id = :user_id"), {"user_id": user_id})
         
         # 4. Delete local user record
         db.execute(text("DELETE FROM public.users WHERE id = :user_id"), {"user_id": user_id})
