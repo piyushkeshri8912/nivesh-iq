@@ -55,4 +55,3 @@ Thumbs.db
 .agents
 .gitignore
 deploy_backend*
-docker*

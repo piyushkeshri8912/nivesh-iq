@@ -49,9 +49,10 @@ jobs:
       uses: google-github-actions/setup-gcloud@v2
 
     - name: Deploy to Cloud Run
+      working-directory: ./backend
       run: |
         gcloud run deploy niveshiq-backend \
-          --source ./backend \
+          --source . \
           --region us-central1 \
           --project ${{ secrets.GCP_PROJECT_ID }} \
           --allow-unauthenticated
