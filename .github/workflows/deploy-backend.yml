@@ -1,0 +1,57 @@
+name: Deploy Backend to Google Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+
+jobs:
+  test-and-deploy:
+    name: Test and Deploy Backend
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+        cache-dependency-path: 'backend/requirements.txt'
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r backend/requirements.txt
+
+    - name: Run Pytest Test Suite
+      env:
+        DATABASE_URL: sqlite:///:memory:
+        VERTEX_PROJECT_ID: mock-project-id
+        GOOGLE_APPLICATION_CREDENTIALS: ""
+        NEON_AUTH_BASE_URL: https://mock-auth.com
+        NEON_AUTH_COOKIE_SECRET: mock-secret
+        REDIS_URL: ""
+      run: |
+        pytest backend/tests/ -v
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Deploy to Cloud Run
+      run: |
+        gcloud run deploy niveshiq-backend \
+          --source ./backend \
+          --region us-central1 \
+          --project ${{ secrets.GCP_PROJECT_ID }} \
+          --allow-unauthenticated

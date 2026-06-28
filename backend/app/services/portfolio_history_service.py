@@ -22,14 +22,17 @@ class PortfolioHistoryService:
         """
         logger.info(f"[PortfolioHistoryService] rebuild_history: Rebuild requested for user {user_id}. from_date={from_date}, force={force}")
         try:
-            # 1. Acquire lock on the user row to prevent concurrent history rebuild conflicts
+            # 1. Acquire lock on the user row to prevent concurrent history rebuild conflicts (skip on SQLite)
             from sqlalchemy import text
-            logger.info(f"[PortfolioHistoryService] rebuild_history: Acquiring row lock for user {user_id}")
-            db.execute(
-                text("SELECT id FROM users WHERE id = :user_id FOR UPDATE;"),
-                {"user_id": user_id}
-            )
-            logger.info(f"[PortfolioHistoryService] rebuild_history: Lock acquired successfully.")
+            if db.bind.dialect.name != "sqlite":
+                logger.info(f"[PortfolioHistoryService] rebuild_history: Acquiring row lock for user {user_id}")
+                db.execute(
+                    text("SELECT id FROM users WHERE id = :user_id FOR UPDATE;"),
+                    {"user_id": user_id}
+                )
+                logger.info(f"[PortfolioHistoryService] rebuild_history: Lock acquired successfully.")
+            else:
+                logger.info(f"[PortfolioHistoryService] rebuild_history: SQLite detected, skipping row lock.")
             
             # 2. Double-check if history was already rebuilt by a concurrent request
             if not force:
